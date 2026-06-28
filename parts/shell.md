@@ -7,7 +7,7 @@ runnable skeleton with correct configuration.
 ## Stack
 
 - **Runtime:** Node.js / pnpm (not npm)
-- **Bundler:** Vite with `@tanstack/react-router-plugin/vite`
+- **Bundler:** Vite with `@tanstack/router-plugin/vite`
 - **Framework:** React 19
 - **Language:** TypeScript (strict)
 - **Styles:** Tailwind CSS v4 (via `@tailwindcss/vite`)
@@ -19,26 +19,84 @@ runnable skeleton with correct configuration.
 
 ## Key files and their purpose
 
+### `index.html`
+
+The Vite entry point. Put three things here directly (not in `__root.tsx`):
+1. The pre-paint theme script — runs before React so there's no flash
+2. Google Fonts `<link>`s — preconnects + the IBM Plex Sans/Martel/Space Mono stylesheet
+3. `data-theme="light"` on `<html>` — the default before the script corrects it
+
+```html
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>your-app</title>
+    <script>try{var t=localStorage.getItem('site-theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Martel:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+### `src/main.tsx`
+
+Import the CSS here (not via `?url` in the router). This is what makes Tailwind
+process and inject all utilities.
+
+```ts
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { createRouter, RouterProvider } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+import './styles/index.css'
+
+const router = createRouter({ routeTree, scrollRestoration: true, defaultPreload: 'intent' })
+
+declare module '@tanstack/react-router' {
+  interface Register { router: typeof router }
+}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode><RouterProvider router={router} /></StrictMode>
+)
+```
+
 ### `package.json`
 
 Scripts: `dev`, `build`, `preview`, `test`, `lint`, `format`. Dev port is
 app-specific — pick one that doesn't conflict with sibling repos. Use pnpm.
 
 Core deps: `react`, `react-dom`, `@tanstack/react-router`.
-Dev deps: `vite`, `@vitejs/plugin-react`, `@tanstack/react-router-plugin`,
+Dev deps: `vite`, `@vitejs/plugin-react`, `@tanstack/router-plugin`,
 `tailwindcss`, `@tailwindcss/vite`, `typescript`, `vitest`,
 `@testing-library/react`, `@testing-library/jest-dom`, `eslint`,
 `eslint-config-prettier`, `prettier`, `lucide-react`.
 
+Note: the Vite plugin package is `@tanstack/router-plugin`, not
+`@tanstack/react-router-plugin`.
+
 ### `vite.config.ts`
+
+All three plugins are required. `tailwindcss()` must be present or Tailwind
+utility classes will not be generated — the CSS custom properties in `tokens.css`
+will still load, but `bg-surface`, `text-text-muted`, `flex`, `hidden`, etc.
+will all be missing.
 
 ```ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { tanstackRouter } from '@tanstack/react-router-plugin/vite'
+import tailwindcss from '@tailwindcss/vite'
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
-  plugins: [tanstackRouter({ autoCodeSplitting: true }), react()],
+  plugins: [TanStackRouterVite({ autoCodeSplitting: true }), tailwindcss(), react()],
   resolve: { alias: { '#': '/src' } },
 })
 ```
@@ -47,8 +105,8 @@ The `#` alias maps to `src/` — use `#/components/foo` not `../../components/fo
 
 ### `tsconfig.json`
 
-Strict mode on. Include `noUncheckedIndexedAccess: true` — it catches real bugs
-and aligns with how the rest of the codebase is written. Target `ES2022`.
+Strict mode on. Include `noUncheckedIndexedAccess: true`. Target `ES2022`.
+Path alias: `"#/*": ["./src/*"]`.
 
 ### `tsr.config.json`
 
@@ -58,20 +116,23 @@ and aligns with how the rest of the codebase is written. Target `ES2022`.
 
 ### `pnpm-workspace.yaml`
 
-Only needed if the repo uses native Node addons (e.g. `sharp`). Add
-`onlyBuiltDependencies` there to approve native builds without prompts.
+Required to allow esbuild's postinstall script (pnpm v9+ blocks native
+build scripts by default):
+
+```yaml
+allowBuilds:
+  esbuild: true
+onlyBuiltDependencies:
+  - esbuild
+```
 
 ### `eslint.config.js` / `prettier.config.js`
 
 Standard flat ESLint config with TypeScript and React rules. Prettier with
 single quotes, no semicolons, trailing commas. Keep `.prettierignore` to
-exclude generated files (`routeTree.gen.ts`, `dist/`).
+exclude `src/routeTree.gen.ts` and `dist/`.
 
 ### `src/app-meta.ts`
-
-Single file that holds per-app identity. Imported by the root route for the
-document title, and by the home shell for display. Keeps name/tagline/repo in
-one place so nothing is hardcoded in multiple files.
 
 ```ts
 export type AppMeta = { name: string; tagline: string; repo: string }
@@ -85,52 +146,72 @@ export const appMeta: AppMeta = {
 
 ### `src/routes/__root.tsx`
 
-The root layout. Handles `<head>` (charset, viewport, title), loads the
-stylesheet, runs the pre-paint theme script, and renders the shell. The styles
-and theme script come from the **styles** part — see that doc. The home shell
-component comes from the **knowledge** part.
+Simple outlet wrapper — no full document render, no stylesheet link (CSS is
+imported in `main.tsx`). Just the ThemeToggle and the Outlet:
+
+```tsx
+import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { ThemeToggle } from '#/components/theme-toggle'
+
+export const Route = createRootRoute({
+  component: () => (
+    <>
+      <ThemeToggle />
+      <Outlet />
+    </>
+  ),
+})
+```
 
 ### `src/routes/index.tsx`
 
-Thin — just wires the `Home` component from `src/components/home.tsx` to the
-`/` route. No logic here.
+Thin — wires the `Home` component to `/`:
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { Home } from '#/components/home'
+
+export const Route = createFileRoute('/')({ component: Home })
+```
+
+### `src/components/home.tsx`
+
+Minimal centered placeholder that renders `appMeta.name` and a link to `/docs`.
+Uses `house-section` (not `house-title`) for the app name:
+
+```tsx
+import { appMeta } from '#/app-meta'
+
+export function Home() {
+  return (
+    <main className="bg-bg text-text flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+      <h1 className="house-section">{appMeta.name}</h1>
+      <a
+        href="/docs"
+        className="text-accent font-mono text-xs underline decoration-[var(--accent-soft)] underline-offset-4 transition-colors hover:decoration-[var(--accent)]"
+      >
+        read the plan →
+      </a>
+    </main>
+  )
+}
+```
 
 ### `src/routeTree.gen.ts`
 
-Auto-generated by TanStack Router. Never edit by hand. Add it to `.gitignore`
-or commit it — either is fine, but be consistent.
+Auto-generated by TanStack Router. Never edit by hand.
 
 ### `public/`
 
-Standard CRA/Vite public folder: `favicon.ico`, `manifest.json`,
-`robots.txt`, `logo192.png`, `logo512.png`. Update `manifest.json` with the
-app name.
-
-### `CLAUDE.md`
-
-A working notes file for coding agents. Include at minimum:
-- What the app does (one paragraph, the welded boundary)
-- Current build state (scaffold / building / live)
-- What to read first (`docs/SPEC.md`, `docs/PLAN.md`)
-
-Update it as the build progresses. It is the agent's orientation doc.
-
-## Vercel deployment
-
-No `vercel.json` is needed for a Vite SPA — Vercel auto-detects it. The
-`build` command is `pnpm build` and the output directory is `dist`. For SPA
-routing (all paths served by `index.html`), add a `vercel.json` only if Vercel
-doesn't handle it automatically:
-
-```json
-{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
-```
+Standard public folder: `favicon.ico`, `manifest.json` (update app name),
+`robots.txt`, `logo192.png`, `logo512.png`.
 
 ## What "done" looks like
 
 - `pnpm install` runs clean
 - `pnpm dev` serves the app on the chosen port
 - `pnpm build` produces a `dist/` folder
-- `pnpm test` runs (even with no tests yet — Vitest should exit 0)
+- `pnpm test` exits 0
 - `pnpm lint` passes
-- The home route renders without errors
+- Home route renders, centered, with correct Paper & Ink colors
+- Theme toggle works: clicking swaps light ↔ dark with no flash on reload

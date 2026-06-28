@@ -28,8 +28,8 @@ repo is runnable, deployable to Vercel, and ready for Phase 1 feature work.
 8. Create `public/` with `favicon.ico`, `manifest.json` (update app name),
    `robots.txt`, `logo192.png`, `logo512.png`.
 9. Write `src/app-meta.ts` with the app's name, tagline, and repo URL.
-10. Write `src/routes/__root.tsx` — skeleton only for now, styles and theme
-    script come in step 2.
+10. Write `src/routes/__root.tsx` — just renders `<ThemeToggle />` and `<Outlet />`.
+    No stylesheet import, no full document render (this is a SPA, not SSR).
 11. Write `src/routes/index.tsx` wiring the `/` route to a `Home` component.
 12. Write `src/components/home.tsx` — a minimal placeholder that displays
     `appMeta.name` and a link to `/docs`. It will be replaced by the first
@@ -39,14 +39,13 @@ repo is runnable, deployable to Vercel, and ready for Phase 1 feature work.
 ## Step 2 — Style system (styles)
 
 1. Create `src/styles/` and write the four CSS files: `tokens.css`, `base.css`,
-   `typography.css`, `index.css`. Use the **styles** part as the spec and
-   `outpaint-studio/src/styles/` as the canonical source.
-2. Update `src/routes/__root.tsx`:
-   - Import the stylesheet: `import appCss from '../styles/index.css?url'`
-   - Add the Google Fonts `<link>`s (preconnects + IBM Plex Sans / Martel /
-     Space Mono stylesheet)
-   - Add the pre-paint theme script (inline `<script>` before `<HeadContent />`)
-   - Set `data-theme="light"` and `suppressHydrationWarning` on `<html>`
+   `typography.css`, `index.css`. Use the **styles** part as the spec — it
+   contains all exact values and the full implementation.
+2. Wire the CSS into the SPA entry points (see the **styles** and **shell** parts):
+   - `index.html`: add `data-theme="light"` on `<html>`, the pre-paint theme
+     script, and Google Fonts `<link>`s (IBM Plex Sans / Martel / Space Mono)
+   - `src/main.tsx`: add `import './styles/index.css'` — this is what triggers
+     Tailwind's utility generation; do NOT use `?url` import in the router
 3. Write `src/components/theme-toggle.tsx`. Render it once in the `<body>` of
    `__root.tsx`.
 4. Update the home component to use the design tokens (`bg-bg`, `text-text`,
@@ -63,8 +62,8 @@ repo is runnable, deployable to Vercel, and ready for Phase 1 feature work.
    - `docs/SPEC.md` — what/why for this app, the welded boundary
    - `docs/PLAN.md` — the concrete phased build order
    - `docs/STYLE.md` — already written in step 2
-2. Write the `/docs` route: copy `outpaint-studio/src/routes/docs.tsx` verbatim,
-   updating only the app name in the sidebar back-link.
+2. Write `src/routes/docs.tsx` from scratch using the full implementation in the
+   **docs** part. Use `appMeta.name` for the sidebar back-link.
 3. Add `react-markdown` and `remark-gfm` to `package.json` and install.
 4. Add a link to `/docs` from the home component (e.g. "read the plan →").
 5. Run `pnpm dev` and navigate to `/docs`. Confirm all four docs files appear
