@@ -89,6 +89,10 @@ utility classes will not be generated — the CSS custom properties in `tokens.c
 will still load, but `bg-surface`, `text-text-muted`, `flex`, `hidden`, etc.
 will all be missing.
 
+Do NOT put `test` config here — use a separate `vitest.config.ts` (see below).
+vitest v2 bundles its own Vite 5 types; mixing `defineConfig` from `vitest/config`
+into this file causes a type conflict with the Vite 6 plugins.
+
 ```ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -103,10 +107,64 @@ export default defineConfig({
 
 The `#` alias maps to `src/` — use `#/components/foo` not `../../components/foo`.
 
+### `vitest.config.ts`
+
+Keep test config separate from `vite.config.ts` to avoid a Vite 5/6 type conflict.
+Repeat the `resolve.alias` so the `#` import path works in tests.
+Set `passWithNoTests: true` so `pnpm test` exits 0 on a fresh scaffold with no test
+files yet.
+
+```ts
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  resolve: { alias: { '#': '/src' } },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test-setup.ts'],
+    passWithNoTests: true,
+  },
+})
+```
+
+Also create `src/test-setup.ts`:
+
+```ts
+import '@testing-library/jest-dom'
+```
+
 ### `tsconfig.json`
 
 Strict mode on. Include `noUncheckedIndexedAccess: true`. Target `ES2022`.
 Path alias: `"#/*": ["./src/*"]`.
+
+Add `"types": ["vite/client"]` so `import.meta.glob` is typed throughout `src/`.
+Do NOT include `vite.config.ts` in `include` — it lives outside the app's type
+context and including it causes the same Vite 5/6 conflict as above.
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "types": ["vite/client"],
+    "paths": { "#/*": ["./src/*"] }
+  },
+  "include": ["src"]
+}
+```
 
 ### `tsr.config.json`
 
@@ -131,6 +189,9 @@ onlyBuiltDependencies:
 Standard flat ESLint config with TypeScript and React rules. Prettier with
 single quotes, no semicolons, trailing commas. Keep `.prettierignore` to
 exclude `src/routeTree.gen.ts` and `dist/`.
+
+Add `'no-empty': ['error', { allowEmptyCatch: true }]` — the `catch {}` pattern
+in `theme-toggle.tsx` is intentional and triggers this rule by default.
 
 ### `src/app-meta.ts`
 
@@ -210,8 +271,10 @@ Standard public folder: `favicon.ico`, `manifest.json` (update app name),
 
 - `pnpm install` runs clean
 - `pnpm dev` serves the app on the chosen port
-- `pnpm build` produces a `dist/` folder
-- `pnpm test` exits 0
+- `pnpm build` produces a `dist/` folder — **must run `pnpm dev` at least once first**
+  so the TanStack Router plugin can generate `src/routeTree.gen.ts`; without it, `tsc`
+  will fail because `src/main.tsx` imports from that file
+- `pnpm test` exits 0 (no test files is fine — `passWithNoTests: true` is set)
 - `pnpm lint` passes
 - Home route renders, centered, with correct Paper & Ink colors
 - Theme toggle works: clicking swaps light ↔ dark with no flash on reload

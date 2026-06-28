@@ -7,9 +7,8 @@ You are about to scaffold a complete, production-ready Vite + React + TanStack R
 ## Before you start — ask the user
 
 1. **App name** — used in `package.json`, `app-meta.ts`, `manifest.json`, and the docs sidebar
-2. **Dev port** — pick one that doesn't conflict with sibling repos (e.g. 5173, 5174, 3001)
-3. **GitHub repo URL** — used in `app-meta.ts` (can be a placeholder if the repo doesn't exist yet)
-4. **Target directory** — where to create the repo (default: current directory)
+2. **GitHub repo URL** — used in `app-meta.ts` (can be a placeholder if the repo doesn't exist yet)
+3. **Target directory** — where to create the repo (default: current directory)
 
 ## Resources — read these in order
 
@@ -25,11 +24,11 @@ Execute each step fully before moving to the next. Confirm `pnpm install` succee
 
 ### Step 1 — Shell
 Create the repo directory, `git init`, write all config files per the shell resource:
-`package.json`, `vite.config.ts`, `tsconfig.json`, `tsr.config.json`,
+`package.json`, `vite.config.ts`, `vitest.config.ts`, `tsconfig.json`, `tsr.config.json`,
 `eslint.config.js`, `prettier.config.js`, `.prettierignore`, `pnpm-workspace.yaml`,
-`index.html`, `src/main.tsx`, `src/app-meta.ts`, `src/routes/__root.tsx`,
-`src/routes/index.tsx`, `src/components/home.tsx`, `src/components/theme-toggle.tsx`,
-`public/manifest.json`, `public/robots.txt`.
+`index.html`, `src/main.tsx`, `src/app-meta.ts`, `src/test-setup.ts`,
+`src/routes/__root.tsx`, `src/routes/index.tsx`, `src/components/home.tsx`,
+`src/components/theme-toggle.tsx`, `public/manifest.json`, `public/robots.txt`.
 
 Run `pnpm install`. Fix any install errors before continuing.
 
@@ -38,6 +37,10 @@ Write the four CSS files per the styles resource:
 `src/styles/tokens.css`, `src/styles/base.css`, `src/styles/typography.css`, `src/styles/index.css`.
 
 The styles are already wired — `main.tsx` imports `./styles/index.css` and `index.html` has the fonts and pre-paint script. Confirm the app runs with `pnpm dev` and the theme toggle works.
+
+**Important:** starting `pnpm dev` here also generates `src/routeTree.gen.ts` via the
+TanStack Router Vite plugin. That file must exist before `pnpm build` can type-check
+cleanly in Step 6.
 
 ### Step 3 — Docs
 Write the four markdown files in `docs/`: `OVERVIEW.md`, `SPEC.md`, `PLAN.md`, `STYLE.md`.
@@ -107,6 +110,7 @@ your-app/
 ├── .github/workflows/ci.yml
 ├── package.json
 ├── vite.config.ts
+├── vitest.config.ts
 ├── tsconfig.json
 ├── tsr.config.json
 ├── pnpm-workspace.yaml
