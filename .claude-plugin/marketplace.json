@@ -1,0 +1,11 @@
+{
+  "name": "bootstrap",
+  "owner": { "name": "Josh Coolman" },
+  "plugins": [
+    {
+      "name": "bootstrap",
+      "source": "./",
+      "description": "Skills for scaffolding and layering web apps: vite-app (new shell) and add-auth (Supabase login layer)."
+    }
+  ]
+}

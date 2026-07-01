@@ -1,10 +1,47 @@
 # bootstrap
 
-Modular setup guides for getting new repos to a known baseline. Each part is
-self-contained and executable by a coding agent. Recipes compose parts into a
-complete starting point.
+Battle-tested Claude Code skills for scaffolding and layering web apps. Every
+skill here was developed by building the real thing in a live repo first, then
+codifying what actually worked — so what's packaged is validated sequencing,
+gates, and gotcha ledgers, not templates.
 
-## Parts
+## Install (as a Claude Code plugin)
+
+```
+/plugin marketplace add joshcoolman/bootstrap
+/plugin install bootstrap@bootstrap
+```
+
+Then, from any directory — including a brand-new empty folder:
+
+```
+mkdir my-app && cd my-app && claude
+> /bootstrap:vite-app      # scaffold the shell (git init + files + install)
+> /bootstrap:add-auth      # later: layer on single-user Supabase login
+```
+
+Skills also auto-trigger from plain requests ("scaffold a new app here",
+"add auth to this app"). For local development of this repo itself, load it
+directly: `claude --plugin-dir ~/repos/bootstrap` (then `/reload-plugins`
+after edits).
+
+## Skills
+
+| Skill | What it does |
+|-------|--------------|
+| [vite-app](skills/vite-app/SKILL.md) | Scaffold a new Vite + React + TanStack Router shell on the Paper & Ink design system — runnable app, docs viewer, feature seams, CI. |
+| [add-auth](skills/add-auth/SKILL.md) | Layer single-user Supabase email/password auth onto an existing app: vendor-agnostic seam, `/login` + guarded `/dashboard`, and an interactive setup wizard the user runs. |
+
+`vite-app` creates a repo from nothing. `add-*` skills layer onto an existing
+app: they assume the stack (Vite + React + TanStack Router + pnpm) but
+*discover* the repo's shape — feature conventions, import alias, styling
+idiom — and adapt to it, so they aren't welded to the vite-app output.
+
+## Parts and recipes (the human-readable form)
+
+The same knowledge also lives as instruction-level docs — what to build and
+why, not line-by-line code — for reading, or for applying a single slice to an
+existing repo:
 
 | Part | What it covers |
 |------|---------------|
@@ -14,15 +51,19 @@ complete starting point.
 | [knowledge](parts/knowledge.md) | Knowledge folder + feature seam pattern (`src/features/`) |
 | [cicd](parts/cicd.md) | GitHub Actions quality gate + Vercel native deploy + Claude GitHub App |
 
-## Recipes
-
 | Recipe | What it produces |
 |--------|-----------------|
-| [vite-react-app](recipes/vite-react-app.md) | Runnable shell with all four parts composed — the standard starting point for new public apps |
+| [vite-react-app](recipes/vite-react-app.md) | Runnable shell with all five parts composed — the standard starting point for new public apps |
 
-## How to use
+## How this repo grows
 
-For a new app, follow the recipe in order. For targeted additions to an
-existing repo, apply individual parts. Parts are written at instruction level —
-they describe what to build and why, not line-by-line code. A coding agent
-(or a human) should be able to execute any part or recipe directly.
+New skills are developed, not written: build the feature for real in a
+throwaway "mule" repo, log every friction point, validate end-to-end, then
+codify. The full authoring contract lives in [CLAUDE.md](CLAUDE.md).
+
+## License
+
+[MIT](LICENSE). Free — install it, fork it, build your own bootstrap on top
+of it. This repo tracks what works for my own projects, so I'm not seeking
+contributions and there's no support: if something doesn't work the way you
+want, fork it and fix it.
