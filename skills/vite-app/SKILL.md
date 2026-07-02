@@ -1,4 +1,5 @@
 ---
+name: vite-app
 description: Bootstrap a new Vite + React + TanStack Router app with the Paper & Ink design system. Use when asked to scaffold a new app, create a starter project, or bootstrap a Vite React app.
 ---
 

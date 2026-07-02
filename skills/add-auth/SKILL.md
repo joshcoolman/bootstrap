@@ -1,4 +1,5 @@
 ---
+name: add-auth
 description: Add single-user Supabase email/password auth to an existing Vite + React + TanStack Router app — a vendor-agnostic AuthClient seam, a /login route, a guarded /dashboard, and an interactive setup wizard the user runs themselves. Use when asked to add auth, add a login page, gate routes behind sign-in, or wire up Supabase auth in an existing Vite app.
 ---
 
