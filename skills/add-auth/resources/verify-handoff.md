@@ -28,9 +28,11 @@ Only when this gate passes do you hand off.
 
 ## Stage 2 — the handoff (the user)
 
-Deliver a message with this substance (adapt tone; keep every warning):
+Deliver a message with this substance (adapt tone; keep every warning). End
+it by repeating the bare command as the final line — the explanation scrolls,
+and the last visible line should be the exact next thing to do:
 
-> Run `pnpm setup:supabase` in the repo. It will walk you through:
+> The setup wizard will walk you through:
 >
 > 1. **Supabase CLI check** — installs via `brew install supabase/tap/supabase`
 >    if missing.
@@ -43,7 +45,14 @@ Deliver a message with this substance (adapt tone; keep every warning):
 > 4. **Your account** — the email and password that will be the app's only
 >    login. There is no signup; re-running the wizard later is safe.
 >
-> Then `pnpm dev` and sign in at `http://localhost:<dev-port>/login`.
+> When it finishes: `pnpm dev` and sign in at
+> `http://localhost:<dev-port>/login`.
+>
+> Run this command in your terminal:
+>
+> ```
+> pnpm setup:supabase
+> ```
 
 While they run it, ask them to report anything that feels rough — wizard
 friction is signal, not noise.
