@@ -21,7 +21,11 @@ running app before involving the user:
    - Visit `/` and any other pre-existing routes → unaffected by the provider
      mount.
    - Both themes render the form correctly (if the app has a theme toggle).
-3. `pnpm lint && pnpm test && pnpm build` — all green with zero env vars.
+3. Stop the `pnpm dev` process once this checklist is done. A leftover
+   process from this step, plus one from `routes.md`'s routeTree-regen step,
+   is exactly how stray Vite servers accumulate and silently push the real
+   one to a drifted port.
+4. `pnpm lint && pnpm test && pnpm build` — all green with zero env vars.
    This is exactly what CI will run.
 
 Only when this gate passes do you hand off.
@@ -44,6 +48,12 @@ and the last visible line should be the exact next thing to do:
 >    does).
 > 4. **Your account** — the email and password that will be the app's only
 >    login. There is no signup; re-running the wizard later is safe.
+> 5. **Security lockdown** — the wizard shows you exactly how to disable
+>    public sign-ups in the Supabase dashboard, then blocks until you confirm
+>    it's done. This is required, not optional: the app treats any account in
+>    the project as "logged in," so leaving sign-ups on means anyone who
+>    finds your app's public anon key could create their own account and
+>    sign in as if they were you.
 >
 > When it finishes: `pnpm dev` and sign in at
 > `http://localhost:<dev-port>/login`.
@@ -66,6 +76,11 @@ With the user signed in, walk the flow:
 - A hard reload stays signed in (localStorage persistence).
 - A wrong password shows the provider's error inline.
 - Sign out lands back on `/login`.
+- Public sign-ups are actually off: call `supabase.auth.signUp()` (or POST
+  `/auth/v1/signup`) with a throwaway email/password against the real
+  project's anon key, and confirm it's rejected ("Signups not allowed for
+  this instance"). A rejection has no side effect, so this is safe to run
+  against the live project.
 
 ## Close-out checklist
 

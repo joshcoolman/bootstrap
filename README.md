@@ -17,7 +17,7 @@ Then, from any directory — including a brand-new empty folder:
 ```
 mkdir my-app && cd my-app && claude
 > /bootstrap:vite-app      # scaffold the shell (git init + files + install)
-> /bootstrap:add-auth      # later: layer on single-user Supabase login
+> /bootstrap:add-auth      # later: layer on a single shared-credential Supabase login (not multi-user auth)
 ```
 
 Skills also auto-trigger from plain requests ("scaffold a new app here",
@@ -30,7 +30,7 @@ after edits).
 | Skill | What it does |
 |-------|--------------|
 | [vite-app](skills/vite-app/SKILL.md) | Scaffold a new Vite + React + TanStack Router shell on the Paper & Ink design system — runnable app, docs viewer, feature seams, CI. |
-| [add-auth](skills/add-auth/SKILL.md) | Layer single-user Supabase email/password auth onto an existing app: vendor-agnostic seam, `/login` + guarded `/dashboard`, and an interactive setup wizard the user runs. |
+| [add-auth](skills/add-auth/SKILL.md) | Layer a single shared-credential Supabase email/password gate onto an existing app — not multi-user auth, one login guards the whole app: vendor-agnostic seam, `/login` + guarded `/dashboard`, and an interactive setup wizard that also locks down public sign-ups. |
 
 `vite-app` creates a repo from nothing. `add-*` skills layer onto an existing
 app: they assume the stack (Vite + React + TanStack Router + pnpm) but

@@ -21,10 +21,12 @@ runnable skeleton with correct configuration.
 
 ### `index.html`
 
-The Vite entry point. Put three things here directly (not in `__root.tsx`):
-1. The pre-paint theme script — runs before React so there's no flash
-2. Google Fonts `<link>`s — preconnects + the IBM Plex Sans/Martel/Space Mono stylesheet
-3. `data-theme="light"` on `<html>` — the default before the script corrects it
+The Vite entry point. Put four things here directly (not in `__root.tsx`):
+1. An inline SVG favicon (data URI) — no binary asset file needed; swap the
+   `fill` color or shape for a real logomark whenever the app gets one
+2. The pre-paint theme script — runs before React so there's no flash
+3. Google Fonts `<link>`s — preconnects + the IBM Plex Sans/Martel/Space Mono stylesheet
+4. `data-theme="light"` on `<html>` — the default before the script corrects it
 
 ```html
 <!doctype html>
@@ -33,6 +35,7 @@ The Vite entry point. Put three things here directly (not in `__root.tsx`):
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>your-app</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%238f523a'/%3E%3C/svg%3E" />
     <script>try{var t=localStorage.getItem('site-theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -70,14 +73,40 @@ createRoot(document.getElementById('root')!).render(
 
 ### `package.json`
 
-Scripts: `dev`, `build`, `preview`, `test`, `lint`, `format`. Dev port is
-app-specific — pick one that doesn't conflict with sibling repos. Use pnpm.
+Dev port is app-specific — pick one that doesn't conflict with sibling repos
+(`<dev-port>` below). Use pnpm.
 
-Core deps: `react`, `react-dom`, `@tanstack/react-router`.
-Dev deps: `vite`, `@vitejs/plugin-react`, `@tanstack/router-plugin`,
-`tailwindcss`, `@tailwindcss/vite`, `typescript`, `vitest`,
-`@testing-library/react`, `@testing-library/jest-dom`, `eslint`,
-`eslint-config-prettier`, `prettier`, `lucide-react`.
+Give the `scripts` block literally — **`build` must run `tsc` before
+`vite build`**, or a real type error passes `pnpm build` silently (the only
+thing `vite build` alone checks for is the presence of
+`src/routeTree.gen.ts`, not type correctness):
+
+```json
+"scripts": {
+  "dev": "vite --port <dev-port>",
+  "build": "tsc --noEmit && vite build",
+  "preview": "vite preview",
+  "test": "vitest run",
+  "lint": "eslint .",
+  "format": "prettier --write ."
+}
+```
+
+Install dependencies with `pnpm add` — never hand-write the `dependencies`/
+`devDependencies` blocks. A hand-picked version pin is exactly what caused a
+real build failure in a live run (`eslint-config-prettier@^9.1.0` pinned by
+hand turned out type-incompatible with the `eslint` version everything else
+resolved to). Letting `pnpm add` resolve all of it together removes the
+guessing:
+
+```
+pnpm add react react-dom @tanstack/react-router lucide-react
+pnpm add -D vite @vitejs/plugin-react @tanstack/router-plugin tailwindcss @tailwindcss/vite typescript typescript-eslint eslint eslint-config-prettier eslint-plugin-react-hooks eslint-plugin-react-refresh @eslint/js prettier vitest @testing-library/react @testing-library/jest-dom jsdom @types/react @types/react-dom
+```
+
+`lucide-react` is a **production** dependency, not a dev dep — `theme-toggle.tsx`
+renders its icons in the shipped bundle. `jsdom` must be installed explicitly;
+vitest's `environment: 'jsdom'` setting doesn't pull it in on its own.
 
 Note: the Vite plugin package is `@tanstack/router-plugin`, not
 `@tanstack/react-router-plugin`.
@@ -97,13 +126,16 @@ into this file causes a type conflict with the Vite 6 plugins.
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
-  plugins: [TanStackRouterVite({ autoCodeSplitting: true }), tailwindcss(), react()],
+  plugins: [tanstackRouter({ autoCodeSplitting: true }), tailwindcss(), react()],
   resolve: { alias: { '#': '/src' } },
 })
 ```
+
+`tanstackRouter` is the current export — `TanStackRouterVite` (same package)
+is deprecated and prints a warning on every build.
 
 The `#` alias maps to `src/` — use `#/components/foo` not `../../components/foo`.
 
@@ -186,12 +218,47 @@ onlyBuiltDependencies:
 
 ### `eslint.config.js` / `prettier.config.js`
 
-Standard flat ESLint config with TypeScript and React rules. Prettier with
-single quotes, no semicolons, trailing commas. Keep `.prettierignore` to
-exclude `src/routeTree.gen.ts` and `dist/`.
+Copy verbatim (adapt point: none — the `add-auth` skill layers its own
+`scripts/**/*.mjs` override block into this file later, before the
+`prettier` entry; don't pre-empt it here since `scripts/` doesn't exist yet):
 
-Add `'no-empty': ['error', { allowEmptyCatch: true }]` — the `catch {}` pattern
-in `theme-toggle.tsx` is intentional and triggers this rule by default.
+```js
+// @ts-check
+
+import js from '@eslint/js'
+import tseslint from 'typescript-eslint'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import prettier from 'eslint-config-prettier'
+
+export default tseslint.config(
+  { ignores: ['dist', 'src/routeTree.gen.ts'] },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
+    },
+  },
+  prettier,
+)
+```
+
+`'no-empty': ['error', { allowEmptyCatch: true }]` exists because the
+`catch {}` pattern in `theme-toggle.tsx` is intentional and triggers this
+rule by default.
+
+Prettier config: single quotes, no semicolons, trailing commas. Keep
+`.prettierignore` to exclude `src/routeTree.gen.ts` and `dist/`.
 
 ### `src/app-meta.ts`
 
@@ -264,8 +331,22 @@ Auto-generated by TanStack Router. Never edit by hand.
 
 ### `public/`
 
-Standard public folder: `favicon.ico`, `manifest.json` (update app name),
-`robots.txt`, `logo192.png`, `logo512.png`.
+`manifest.json` (update app name) and `robots.txt`. No icon files —
+`index.html`'s inline SVG favicon covers that without needing a sourced
+binary asset (nothing to copy from another app on a first-ever run):
+
+```json
+{
+  "short_name": "your-app",
+  "name": "your-app",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#e9e6df",
+  "background_color": "#e9e6df"
+}
+```
+
+`theme_color`/`background_color` match `tokens.css`'s light `--bg`.
 
 ## What "done" looks like
 

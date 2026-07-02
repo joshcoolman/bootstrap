@@ -100,7 +100,12 @@ console.log('\n┌────────────────────�
 console.log('│      web-starter auth setup wizard    │')
 console.log('└──────────────────────────────────────┘\n')
 console.log('This links a Supabase project for email/password login,')
-console.log('writes .env.local, and creates your account (the only login).\n')
+console.log('writes .env.local, creates your account (the only login), and')
+console.log('locks down public sign-ups so no one else can create one.\n')
+console.log('Tip: to skip macOS Keychain prompts entirely, Ctrl+C now, create a')
+console.log('token at https://supabase.com/dashboard/account/tokens, then run:')
+console.log('  export SUPABASE_ACCESS_TOKEN=sbp_...')
+console.log('and re-run this wizard.\n')
 
 await confirm({ message: 'Ready to continue?', default: true })
 
@@ -119,8 +124,12 @@ console.log('\n── 1/3  Supabase login ────────────�
 
 if (!canRun('supabase projects list --output json')) {
   console.log('Log in to Supabase (opens browser).')
-  console.log('  Note: macOS may ask if your terminal can access the Keychain.')
-  console.log('  Click "Deny" — the login still works.\n')
+  console.log('  Note: macOS may ask if your terminal can access the Keychain —')
+  console.log('  and will keep asking on nearly every command below, not just once.')
+  console.log('  "Deny" is safe but repeats through the rest of this wizard;')
+  console.log('  granting access is also safe (it\'s the official CLI) and stops')
+  console.log('  the repeats. The SUPABASE_ACCESS_TOKEN tip above avoids this')
+  console.log('  dialog entirely.\n')
   run('supabase login')
 }
 console.log('  ✓ Logged in\n')
@@ -341,6 +350,25 @@ if (res.ok) {
   }
 }
 
+// ── Lock the door: disable public signups ───────────────────
+console.log('\n── Security ─────────────────────────────────────\n')
+console.log('This app treats ANY account in this Supabase project as')
+console.log('"logged in" — it never checks which user it is. Left on,')
+console.log("anyone who finds your app's public anon key can create their")
+console.log('own account and sign in as if they were you.\n')
+console.log('Disable it now:')
+console.log('  Supabase dashboard → Authentication → Sign In / Providers')
+console.log('  → Email → turn OFF "Allow new users to sign up"')
+console.log('  (exact wording varies by dashboard version)\n')
+
+let locked = false
+while (!locked) {
+  locked = await confirm({
+    message: "I've disabled public sign-ups for this project",
+    default: false,
+  })
+}
+
 console.log('\n✓ Setup complete!')
 console.log('  pnpm dev → http://localhost:5180/login\n')
 ```
@@ -372,15 +400,33 @@ crash or a lie.
 - **The DB-password ceremony** — Supabase never shows the password again;
   project creation requires one even though auth-only setups never use it
   after. The show-and-confirm box prevents a locked-out user.
-- **The Keychain "Deny" note** — macOS asks if the terminal may access the
-  Keychain during `supabase login`; denying still works, and the prompt scares
-  users without the note.
+- **The Keychain note (and the `SUPABASE_ACCESS_TOKEN` banner tip)** — macOS
+  asks if the terminal may access the Keychain during `supabase login`, and —
+  confirmed against a live run — it keeps re-asking on nearly every later CLI
+  call (`projects list`, `link`, `api-keys`, …), not just once. The original
+  "Click Deny, it still works" advice was technically true but practically
+  misleading: a user who takes it gets interrupted repeatedly through the
+  rest of the wizard and can end up granting persistent OS-level access just
+  to make it stop. `SUPABASE_ACCESS_TOKEN` is Supabase's own documented
+  non-interactive auth path (built for CI, but works here too) and sidesteps
+  native Keychain access altogether — the banner surfaces it *before* login,
+  not after the friction has already happened. No control-flow change: the
+  existing `canRun('supabase projects list --output json')` check already
+  succeeds transparently once the var is set.
 - **Admin-API provisioning with `email_confirm: true`** — "no signup UI"
   means the single user must be created server-side; without `email_confirm`
   the user can never log in (no confirmation email flow exists in the app).
 - **"already been registered" treated as success** — makes re-running the
   wizard idempotent (re-link, re-derive keys, rewrite `.env.local`, no-op the
   user).
+- **The signup-lockdown `confirm()` loops instead of pausing once** — every
+  other `confirm()` in this script is a checkpoint (its answer is never
+  read). This one blocks on `false` and re-asks, because the app has no
+  concept of "which user" — leaving public sign-ups on means anyone who
+  extracts the public anon key from the deployed bundle can register their
+  own account and pass the login gate identically to the real owner. Silent
+  failure here is a real security hole, not a rough edge, so it's the one
+  step that must not be skippable.
 - **`SUPABASE_SERVICE_ROLE_KEY` has no `VITE_` prefix** — Vite only exposes
   `VITE_*` to `import.meta.env`, so the admin key can never reach the client
   bundle. It lives in `.env.local` (gitignored) for the script only.

@@ -35,7 +35,7 @@ Design rationale — why it's built this way:
 
 ```tsx
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type SubmitEvent } from 'react'
 
 import { useAuth } from '#/features/auth'
 
@@ -62,7 +62,7 @@ function LoginPage() {
     if (!loading && user) void router.history.push(destination)
   }, [loading, user, destination, router])
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     setSubmitting(true)
     setError(null)
@@ -217,7 +217,11 @@ router plugin regenerates `routeTree.gen.ts`**. After creating the route
 files:
 
 1. Run `pnpm dev` once (a few seconds is enough) — this regenerates
-   `src/routeTree.gen.ts` with the new routes.
+   `src/routeTree.gen.ts` with the new routes. **Stop the dev server
+   afterward** — it was only started to trigger the regen. A stray process
+   left listening is still bound when a later step starts another
+   `pnpm dev`, and Vite's auto-increment silently drifts the port away from
+   `<dev-port>` before the handoff message's promised URL is even typed.
 2. Then `pnpm build` must pass.
 3. The regenerated `routeTree.gen.ts` **must be committed**, or CI's
    type-check fails on routes it has never heard of.

@@ -1,6 +1,6 @@
 ---
 name: add-auth
-description: Add single-user Supabase email/password auth to an existing Vite + React + TanStack Router app — a vendor-agnostic AuthClient seam, a /login route, a guarded /dashboard, and an interactive setup wizard the user runs themselves. Use when asked to add auth, add a login page, gate routes behind sign-in, or wire up Supabase auth in an existing Vite app.
+description: Add a single shared-credential Supabase email/password gate (not multi-user auth) to an existing Vite + React + TanStack Router app — a vendor-agnostic AuthClient seam, a /login route, a guarded /dashboard, and an interactive setup wizard the user runs themselves. Use when asked to add auth, add a login page, gate routes behind sign-in, or wire up Supabase auth in an existing Vite app.
 ---
 
 You are about to add auth to the current repo — the one you are running in.
@@ -19,10 +19,15 @@ drive the interactive Supabase steps.
 2. **Confirm Supabase** as the auth vendor (the only vendor this skill
    supports; the code seam keeps a second vendor cheap later), and that they
    have — or can create — a free Supabase account.
-3. **Confirm the boundary** — single user, email/password only, no signup UI,
-   no password reset, no OAuth, no roles. (Password reset needs
-   `detectSessionInUrl` + `PASSWORD_RECOVERY` handling — explicitly out of
-   scope.)
+3. **Confirm the boundary** — this is a single shared-credential gate, not
+   user management: any account that exists in the linked Supabase project
+   gets identical access, because the app never checks *which* user is
+   signed in. No signup UI, no password reset, no OAuth, no roles. Because of
+   that, the setup wizard requires disabling public sign-ups in the Supabase
+   dashboard as a mandatory security step — otherwise anyone who finds the
+   app's public anon key could create their own account and pass the gate.
+   (Password reset needs `detectSessionInUrl` + `PASSWORD_RECOVERY`
+   handling — explicitly out of scope.)
 4. **Protected route** — default is a new empty `/dashboard`; or should an
    existing route be gated instead?
 
