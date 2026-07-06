@@ -74,9 +74,15 @@ want, fork it and fix it.
 the skill was always a single shared-credential gate (not multi-user auth),
 but the name didn't say so.
 
-**Up next:** [#1 — add-user-auth](https://github.com/joshcoolman/bootstrap/issues/1),
+**Up next, both on hold:** [#2 — next-app](https://github.com/joshcoolman/bootstrap/issues/2),
+a Next.js App Router sibling to `vite-app` for apps that need real
+server-side compute (confirmed necessary by `~/repos/effective`, which
+outgrew `vite-app`'s client-only shell and migrated to Next.js mid-build),
+then [#1 — add-user-auth](https://github.com/joshcoolman/bootstrap/issues/1),
 real per-user auth plus the enforcement discipline from
 `FEATURE-MODULE-PATTERN.md` (auth/authorization checks in the use-case/data
-layer, not the UI). Not started — needs its own mule-repo development pass
-per the admission bar above, probably starting from a clone of
-`~/repos/view-down`.
+layer, not the UI), retargeted to run on `next-app` once it exists.
+
+Both are blocked on a parallel effort making `effective` truly multi-tenant
+— that's a better mule than anything draftable speculatively, so neither
+skill starts until that resolves and its lessons can inform the draft.
