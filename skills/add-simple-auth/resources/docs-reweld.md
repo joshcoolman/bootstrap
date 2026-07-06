@@ -32,7 +32,7 @@ adapt-to-the-repo's-voice templates, not paste targets):
   (SPEC/OVERVIEW/one-line-bet) is still an unscoped Phase-0 placeholder with
   no concrete "no auth" claim to find, skip it. The `PLAN.md` phase entry +
   root `CLAUDE.md` update are the only re-weld required in that case — this
-  is the common path when `add-auth` runs immediately after `vite-app`, before
+  is the common path when `add-simple-auth` runs immediately after `vite-app`, before
   the app has been scoped.
 - **SPEC-style doc, "does / does not" lists** — add a "does" bullet for the
   gated dashboard; rewrite the "does not talk to any backend/auth" bullet so

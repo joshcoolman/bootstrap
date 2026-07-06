@@ -1,6 +1,6 @@
 {
   "name": "bootstrap",
-  "description": "Skills for scaffolding and layering web apps: vite-app builds a Vite + React + TanStack Router shell on the Paper & Ink design system; add-auth layers single-user Supabase email/password auth onto an existing app.",
+  "description": "Skills for scaffolding and layering web apps: vite-app builds a Vite + React + TanStack Router shell on the Paper & Ink design system; add-simple-auth layers a single shared-credential Supabase email/password gate onto an existing app.",
   "version": "1.0.0",
   "author": { "name": "Josh Coolman" },
   "license": "MIT",

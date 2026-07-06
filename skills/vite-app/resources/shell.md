@@ -218,7 +218,7 @@ onlyBuiltDependencies:
 
 ### `eslint.config.js` / `prettier.config.js`
 
-Copy verbatim (adapt point: none — the `add-auth` skill layers its own
+Copy verbatim (adapt point: none — the `add-simple-auth` skill layers its own
 `scripts/**/*.mjs` override block into this file later, before the
 `prettier` entry; don't pre-empt it here since `scripts/` doesn't exist yet):
 

@@ -1,6 +1,6 @@
 ---
-name: add-auth
-description: Add a single shared-credential Supabase email/password gate (not multi-user auth) to an existing Vite + React + TanStack Router app — a vendor-agnostic AuthClient seam, a /login route, a guarded /dashboard, and an interactive setup wizard the user runs themselves. Use when asked to add auth, add a login page, gate routes behind sign-in, or wire up Supabase auth in an existing Vite app.
+name: add-simple-auth
+description: Add a single shared-credential Supabase email/password gate (not multi-user auth — one login guards the whole app) to an existing Vite + React + TanStack Router app — a vendor-agnostic AuthClient seam, a /login route, a guarded /dashboard, and an interactive setup wizard the user runs themselves. Use when asked to add simple auth, add a shared login, gate the whole app behind sign-in, or wire up Supabase auth in an existing Vite app.
 ---
 
 You are about to add auth to the current repo — the one you are running in.

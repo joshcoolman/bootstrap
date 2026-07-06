@@ -46,7 +46,7 @@ Skills that layer onto an existing app must:
   pnpm may be assumed; the repo's shape may not. Step 0 is a discovery pass
   that fills adaptation slots (`<alias>`, `<features-dir>`, `<dev-port>`, the
   styling idiom, the docs to update) which every later step references. See
-  `skills/add-auth/resources/discovery.md` for the template.
+  `skills/add-simple-auth/resources/discovery.md` for the template.
 - **Edit, don't clobber.** Instructions phrased as "add this block / change
   this line, preserving what's there" — layering skills modify files they
   don't own.
@@ -59,7 +59,7 @@ Skills that layer onto an existing app must:
 
 - **An agent-verifiable gate comes before any human handoff.** Design the
   feature so its code layer is provable without external accounts (e.g.
-  add-auth's adapter degrades gracefully with no env vars, so the whole
+  add-simple-auth's adapter degrades gracefully with no env vars, so the whole
   redirect flow verifies headless with no Supabase project).
 - **Interactive vendor steps always belong to the user.** The skill authors
   wizards into the target repo (re-runnable, idempotent) and hands off with a

@@ -5,7 +5,7 @@
     {
       "name": "bootstrap",
       "source": "./",
-      "description": "Skills for scaffolding and layering web apps: vite-app (new shell) and add-auth (Supabase login layer)."
+      "description": "Skills for scaffolding and layering web apps: vite-app (new shell) and add-simple-auth (shared-credential Supabase login layer)."
     }
   ]
 }
