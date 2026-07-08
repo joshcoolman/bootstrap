@@ -20,6 +20,14 @@ mkdir my-app && cd my-app && claude
 > /bootstrap:add-simple-auth # later: layer on a single shared-credential Supabase login (not multi-user auth)
 ```
 
+Or, for an app that needs real server-side compute:
+
+```
+mkdir my-app && cd my-app && claude
+> /bootstrap:next-app      # scaffold a Next.js App Router shell instead
+> /bootstrap:add-user-auth # later: layer on genuine multi-user Supabase auth
+```
+
 Skills also auto-trigger from plain requests ("scaffold a new app here",
 "add auth to this app"). For local development of this repo itself, load it
 directly: `claude --plugin-dir ~/repos/bootstrap` (then `/reload-plugins`
@@ -30,12 +38,17 @@ after edits).
 | Skill | What it does |
 |-------|--------------|
 | [vite-app](skills/vite-app/SKILL.md) | Scaffold a new Vite + React + TanStack Router shell on the Paper & Ink design system — runnable app, docs viewer, feature seams, CI. |
-| [add-simple-auth](skills/add-simple-auth/SKILL.md) | Layer a single shared-credential Supabase email/password gate onto an existing app — not multi-user auth, one login guards the whole app: vendor-agnostic seam, `/login` + guarded `/dashboard`, and an interactive setup wizard that also locks down public sign-ups. |
+| [next-app](skills/next-app/SKILL.md) | Scaffold a new Next.js App Router shell on the same Paper & Ink design system, for apps that need real server-side compute, secrets, or (later) per-user auth. v1 — validated by porting from a live Next.js migration, not yet run as its own consumer. |
+| [add-simple-auth](skills/add-simple-auth/SKILL.md) | Layer a single shared-credential Supabase email/password gate onto an existing Vite app — not multi-user auth, one login guards the whole app: vendor-agnostic seam, `/login` + guarded `/dashboard`, and an interactive setup wizard that also locks down public sign-ups. |
+| [add-user-auth](skills/add-user-auth/SKILL.md) | Layer genuine multi-user Supabase auth onto an existing `next-app`-scaffolded Next.js app — distinct accounts, per-user data isolation via Postgres RLS + a service-layer identity check, an optional example feature proving the isolation end-to-end, and an interactive setup wizard. v1 — drafted directly from a live reference app, not yet run as its own consumer. |
 
-`vite-app` creates a repo from nothing. `add-*` skills layer onto an existing
-app: they assume the stack (Vite + React + TanStack Router + pnpm) but
-*discover* the repo's shape — feature conventions, import alias, styling
-idiom — and adapt to it, so they aren't welded to the vite-app output.
+`vite-app` and `next-app` both create a repo from nothing — pick the shell
+based on whether the app needs a server. `add-*` skills layer onto an
+existing app: they assume the stack but *discover* the repo's shape —
+feature conventions, import alias, styling idiom — and adapt to it, so
+they aren't welded to either shell's output. `add-simple-auth` targets
+`vite-app`; `add-user-auth` targets `next-app` — pick the auth skill that
+matches the shell underneath.
 
 ## Parts and recipes (the human-readable form)
 
@@ -70,19 +83,43 @@ want, fork it and fix it.
 
 ## Status
 
-**Last shipped:** renamed `add-auth` → `add-simple-auth` for transparency —
-the skill was always a single shared-credential gate (not multi-user auth),
-but the name didn't say so.
+**Last shipped:** two skills drafted together on one branch, both by the
+same deviation — drafted directly from a live, proven reference app
+(`~/repos/effective`) rather than a fresh disposable mule, each noted as a
+one-off exception to this repo's usual mule-first loop:
 
-**Up next, both on hold:** [#2 — next-app](https://github.com/joshcoolman/bootstrap/issues/2),
-a Next.js App Router sibling to `vite-app` for apps that need real
-server-side compute (confirmed necessary by `~/repos/effective`, which
-outgrew `vite-app`'s client-only shell and migrated to Next.js mid-build),
-then [#1 — add-user-auth](https://github.com/joshcoolman/bootstrap/issues/1),
-real per-user auth plus the enforcement discipline from
-`FEATURE-MODULE-PATTERN.md` (auth/authorization checks in the use-case/data
-layer, not the UI), retargeted to run on `next-app` once it exists.
+- [#2 — next-app](https://github.com/joshcoolman/bootstrap/issues/2) v1.
+  Already run once end-to-end as a fresh consumer in a scratch folder,
+  which surfaced and fixed real friction: an `eslint@10` +
+  `eslint-config-next` peer mismatch that crashed `pnpm lint` outright (now
+  pinned to `eslint@^9`), a hash-sync `useEffect` that tripped
+  `react-hooks/set-state-in-effect` (now a lazy `useState` initializer —
+  also fixed a real flash-of-wrong-doc bug), two plain anchors swapped for
+  `next/link`, and a `tokens.css` gap shared with `vite-app`
+  (spacing/radius/type-scale/motion/border-width were only ever described
+  in a comment, never declared — now filled in). All five gates pass clean
+  with zero env vars. One non-blocking Turbopack build warning remains,
+  documented as accepted in `resources/docs.md`.
+- [#1 — add-user-auth](https://github.com/joshcoolman/bootstrap/issues/1)
+  v1, layered on top of `next-app`. The issue assumed a
+  `FEATURE-MODULE-PATTERN.md` already existed to draw enforcement
+  discipline from — it didn't, anywhere; the discipline (an identity port
+  every feature depends on, RLS + an explicit `.eq('user_id', ...)` filter
+  as double enforcement, a fixed discriminated-union error taxonomy, checks
+  living in the service/use-case layer not the UI) only existed as code and
+  comments in the reference app, so this skill is what writes it down for
+  the first time, as a `docs/FEATURE-MODULE-PATTERN.md` it installs into
+  consuming repos. Reimplements the reference app's Effect-based identity
+  port as plain async/await TypeScript (`next-app` has zero extra runtime
+  deps today; no reason to add `effect` just to port this). Ships an
+  optional example feature (`snippets`, deliberately not `todos` — a prior
+  naming collision from repeated demo builds) proving per-user isolation
+  end-to-end when accepted. **Not yet run end-to-end as a fresh
+  consumer** — that's the next real test for both skills.
 
-Both are blocked on a parallel effort making `effective` truly multi-tenant
-— that's a better mule than anything draftable speculatively, so neither
-skill starts until that resolves and its lessons can inform the draft.
+**Up next:** integration-test both as a consumer, in sequence: scaffold a
+throwaway repo with `/bootstrap:next-app`, then run
+`/bootstrap:add-user-auth` against it and drive it through a real
+(disposable) Supabase project — both without and with the optional
+`snippets` feature — logging whatever friction surfaces, the same way
+`next-app`'s own first live run did.

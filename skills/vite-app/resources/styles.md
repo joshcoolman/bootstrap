@@ -23,6 +23,19 @@ Copy verbatim. Defines CSS custom properties on `:root` (light defaults), with
 `[data-theme='light']` restated (so a nested light frame beats a dark ancestor)
 and a `[data-theme='dark']` block. Key values:
 
+**Correction from a live run (via the `next-app` sibling skill, which shares
+this file):** the spacing/radius/type-scale/motion/border-width values below
+used to be only described in a comment (`/* spacing: --space-1 (4px)
+through --space-9 (80px) */`), never actually declared — `typography.css`
+and `base.css` reference `var(--space-4)`, `var(--dur-base)`, etc., but those
+custom properties didn't exist, so they silently resolved to nothing (a
+missing CSS custom property is not an error — it's just absent, so `.prose`
+spacing, the `body` fade-in, and the `.compact` heading sizes would have
+quietly been wrong or inert). The declarations below are freshly authored to
+match what the comment already promised, not recovered from a prior working
+version — treat them as a first pass, not a verified port, and look closely
+if anything in `.prose` or the fade-in animation looks off.
+
 ```css
 :root {
   --bg: #e9e6df;
@@ -45,12 +58,35 @@ and a `[data-theme='dark']` block. Key values:
   --font-body: 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'Space Mono', 'SF Mono', Menlo, monospace;
 
-  /* spacing: --space-1 (4px) through --space-9 (80px) */
-  /* radius: --radius-sm (2px) through --radius-pill (999px) */
-  /* type: --text-xs (11px) through --text-title (clamp(36px,6vw,56px)) */
-  /* motion: --ease, --dur-fast, --dur-base, --dur-slow */
-  /* border-width: --border-width (1px), --border-width-strong (2px) —
-     typography.css's .prose table rules read these directly */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 80px;
+
+  --radius-sm: 2px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-lg: 22px;
+  --text-xl: 28px;
+  --text-subtitle: clamp(20px, 3vw, 26px);
+  --text-title: clamp(36px, 6vw, 56px);
+
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+
+  --border-width: 1px;
+  --border-width-strong: 2px;
 }
 
 [data-theme='dark'] {

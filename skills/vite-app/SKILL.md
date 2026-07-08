@@ -5,11 +5,35 @@ description: Bootstrap a new Vite + React + TanStack Router app with the Paper &
 
 You are about to scaffold a complete, production-ready Vite + React + TanStack Router app. Read each resource file in order before writing any code — they contain the exact file contents, CSS values, and implementation details you need.
 
-## Before you start — ask the user
+## Before you start — check first, only ask if genuinely blocked
 
-1. **App name** — used in `package.json`, `app-meta.ts`, `manifest.json`, and the docs sidebar
-2. **GitHub repo URL** — used in `app-meta.ts` (can be a placeholder if the repo doesn't exist yet)
-3. **Target directory** — where to create the repo (default: current directory)
+Look at the target directory before asking anything (default: the current
+directory — confirmed live, via `next-app`'s identical pattern, that asking
+the three questions below unconditionally, even on an empty throwaway
+folder, is pure friction with no payoff).
+
+**If the directory is empty** (no files, or only OS cruft like `.DS_Store`,
+or an empty `.git`): infer everything below and go straight to Step 1 — no
+questions.
+
+- **App name** — the directory's own basename, kebab-cased if it isn't
+  already. Used in `package.json`, `app-meta.ts`, `manifest.json`, and the
+  docs sidebar.
+- **GitHub repo URL** — a plain placeholder, `https://github.com/your-username/<app-name>`.
+  Never call `gh` or otherwise look up who the user actually is on GitHub —
+  this field is cosmetic (used only in `app-meta.ts`'s `repo` field), so a
+  clearly-fake value costs nothing and doesn't assume an identity that
+  wasn't given. This skill only runs `git init` locally; it never creates or
+  queries anything on GitHub itself.
+- **Target directory** — the current directory. Always.
+
+**If the directory is NOT empty:** stop and ask before writing anything.
+Name exactly what you found — "this already looks like a git repo with a
+`package.json`" / "there are already N files here, including an `images/`
+folder — is that meant to be part of this app, or should I use a different
+directory?" Don't guess whether existing content belongs to the scaffold or
+is unrelated clutter; that's the user's call, not an assumption to make
+silently.
 
 ## Resources — read these in order
 
@@ -24,7 +48,7 @@ You are about to scaffold a complete, production-ready Vite + React + TanStack R
 Execute each step fully before moving to the next. Confirm `pnpm install` succeeds after Step 1 before writing any source files.
 
 ### Step 1 — Shell
-Create the repo directory, `git init`, write all config files per the shell resource:
+`git init` if `.git` doesn't already exist, write all config files per the shell resource:
 `package.json`, `vite.config.ts`, `vitest.config.ts`, `tsconfig.json`, `tsr.config.json`,
 `eslint.config.js`, `prettier.config.js`, `.prettierignore`, `pnpm-workspace.yaml`,
 `index.html`, `src/main.tsx`, `src/app-meta.ts`, `src/test-setup.ts`,
@@ -61,12 +85,25 @@ Create `knowledge/` at the repo root with placeholder `guidance.md` and `rubric.
 ### Step 5 — CI/CD
 Write `.github/workflows/ci.yml` per the cicd resource.
 
-### Step 6 — Verify
+### Step 6 — Verify, then launch
 Run `pnpm build`, `pnpm test`, `pnpm lint` — all must pass.
 
 Write `CLAUDE.md` at the repo root (agent orientation: what the app does, current phase, what to read first).
 
 Write `README.md` (public summary: stack, boundary, local dev commands).
+
+Once all three gates pass, finish with the actual handoff moment, not just a
+pass/fail report:
+
+1. Start `pnpm dev` as a tracked background process (not shell `&`) so it's
+   stoppable rather than orphaned.
+2. Poll `http://localhost:<dev-port>` until it responds — don't open a
+   browser to a connection-refused page.
+3. Open the browser to the home page (`open http://localhost:<dev-port>` on
+   macOS — `xdg-open` on Linux, `start` on Windows).
+4. Leave the dev server running. That's the point: the user picks up from a
+   live, already-open app, not one they have to start themselves.
+5. Mention that `/docs` is live on the same server.
 
 ## What the finished repo looks like
 
@@ -119,4 +156,4 @@ your-app/
 └── prettier.config.js
 ```
 
-Phase 0 complete. The shell is runnable, the docs viewer works, the style system is live, and the feature seams are in place.
+Phase 0 complete. The dev server is already running and the browser is already open on the home page — the docs viewer works, the style system is live, and the feature seams are in place. Pick up from there.
