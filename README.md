@@ -41,6 +41,7 @@ after edits).
 | [next-app](skills/next-app/SKILL.md) | Scaffold a new Next.js App Router shell on the same Paper & Ink design system, for apps that need real server-side compute, secrets, or (later) per-user auth. v1 — validated by porting from a live Next.js migration, not yet run as its own consumer. |
 | [add-simple-auth](skills/add-simple-auth/SKILL.md) | Layer a single shared-credential Supabase email/password gate onto an existing Vite app — not multi-user auth, one login guards the whole app: vendor-agnostic seam, `/login` + guarded `/dashboard`, and an interactive setup wizard that also locks down public sign-ups. |
 | [add-user-auth](skills/add-user-auth/SKILL.md) | Layer genuine multi-user Supabase auth onto an existing `next-app`-scaffolded Next.js app — distinct accounts, per-user data isolation via Postgres RLS + a service-layer identity check, an optional example feature proving the isolation end-to-end, and an interactive setup wizard. v1 — drafted directly from a live reference app, not yet run as its own consumer. |
+| [deploy-next-railway](skills/deploy-next-railway/SKILL.md) | Deploy an existing Next.js App Router app to Railway — provision Postgres and a Storage Bucket if needed, wire env vars (internal `DATABASE_URL` reference, session secret, bucket credentials), set the Pre-Deploy Command for migrations, and verify live via the deploy log and browser. v1 — extracted directly from the `next-railway-app` recipe's Step 6, itself proven only in individually-tested pieces, not yet run as one integrated flow. |
 
 `vite-app` and `next-app` both create a repo from nothing — pick the shell
 based on whether the app needs a server. `add-*` skills layer onto an
@@ -48,7 +49,10 @@ existing app: they assume the stack but *discover* the repo's shape —
 feature conventions, import alias, styling idiom — and adapt to it, so
 they aren't welded to either shell's output. `add-simple-auth` targets
 `vite-app`; `add-user-auth` targets `next-app` — pick the auth skill that
-matches the shell underneath.
+matches the shell underneath. `deploy-next-railway` is a different kind of
+layering skill: it targets Railway project config rather than repo files,
+and pairs with the `next-railway-app` recipe's earlier steps rather than a
+shell skill directly.
 
 ## Parts and recipes (the human-readable form)
 
