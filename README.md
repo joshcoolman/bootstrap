@@ -67,6 +67,8 @@ existing repo:
 | Recipe | What it produces |
 |--------|-----------------|
 | [vite-react-app](recipes/vite-react-app.md) | Runnable shell with all five parts composed — the standard starting point for new public apps |
+| [next-selfhost-app](recipes/next-selfhost-app.md) | Self-hostable Next.js app: SQLite, local disk storage, optional single-user auth, BYOK, Docker/volume deploy to Railway or Fly — zero required vendor accounts |
+| [next-railway-app](recipes/next-railway-app.md) | Next.js on Railway: Postgres, bucket storage, whitelist-only multi-user auth (no Supabase), proven via a todos CRUD demo |
 
 ## How this repo grows
 
