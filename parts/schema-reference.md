@@ -74,6 +74,36 @@ If you skip #3, skip the whole part. A stale map is a liability.
   not negotiable: without it, the tripwire in #3 cannot run and you are back to
   "someone remembered." If CI has no database, don't adopt this.
 
+## Known limits
+
+"Extracted from a live run" guarantees less than it sounds like. It has met
+exactly one schema — ten tables, one enum, single-column foreign keys, composite
+primary keys, composite uniques, partial indexes. Everything below is either
+handled-but-never-exercised or not handled at all. If you hit one, **fix it
+here**, and delete the line.
+
+- **Composite foreign keys** — implemented (`conkey`/`confkey` return ordered
+  column arrays, rendered as ``→ `t` (a, b) via (x, y)``), never exercised.
+- **CHECK and EXCLUSION constraints** — not rendered at all. A `check (price > 0)`
+  is invisible on the map, which is a real omission: it is enforcement the map
+  does not show.
+- **Views** — excluded (`table_type = 'BASE TABLE'`). Deliberate: otherwise the
+  first view anyone adds gets treated as a table and refuses to regenerate until
+  annotated. Widening this is a one-line change, noted in the script.
+- **Only the `public` schema** is read.
+- **Generated / identity columns, partitioned tables, domains** — untested.
+
+One warning from how this part got its scars. The obvious `information_schema`
+join (`key_column_usage` × `constraint_column_usage`) **cross-products a
+composite constraint into per-column rows**, and rendering those independently
+makes the map *lie*: `unique (owner_id, image_url)` comes back as "owner_id is
+unique" and "image_url is unique" — claiming a uniqueness neither column has.
+That shipped, in four tables, before it was caught. The script reads
+`pg_constraint` instead for exactly this reason. Don't "simplify" it back.
+
+A map that is merely incomplete is fine — you go look at the migration. A map
+that is confidently wrong is worse than no map, because you don't go look.
+
 ## `scripts/gen-schema.mjs`
 
 Project-agnostic — contains no facts about any particular app. Copy verbatim.
@@ -125,6 +155,18 @@ const BANNER = [
 // Postgres as production — this script must never write.
 const sql = postgres(databaseUrl)
 
+// Base tables only. information_schema.columns also reports views, which would
+// otherwise be picked up as tables and demand an annotation — a confusing
+// failure for anyone who adds their first view and suddenly cannot regenerate.
+// If you want views on the map, widen this to include 'VIEW' and give them
+// annotations like any other entry.
+const baseTables = await sql`
+  select table_name
+  from information_schema.tables
+  where table_schema = 'public' and table_type = 'BASE TABLE'
+`
+const baseTableNames = new Set(baseTables.map((t) => t.table_name))
+
 const columns = await sql`
   select table_name, column_name, udt_name, is_nullable, column_default, ordinal_position
   from information_schema.columns
@@ -132,24 +174,39 @@ const columns = await sql`
   order by table_name, ordinal_position
 `
 
-// Primary keys and foreign keys, with the FK's target and on-delete rule.
+// Primary keys, unique constraints and foreign keys — one row per CONSTRAINT,
+// with its columns as an ordered array.
+//
+// Read from pg_constraint rather than information_schema. The obvious
+// information_schema query joins key_column_usage (one row per column) against
+// constraint_column_usage, which cross-products a composite constraint into
+// per-column rows — and rendering those independently makes the map LIE: a
+// `unique (owner_id, image_url)` comes back as "owner_id is unique" and
+// "image_url is unique", which claims a uniqueness neither column has.
+// conkey/confkey give the real thing: ordered column arrays, composites intact.
 const constraints = await sql`
   select
-    tc.table_name,
-    tc.constraint_type,
-    kcu.column_name,
-    ccu.table_name  as foreign_table,
-    ccu.column_name as foreign_column,
-    rc.delete_rule
-  from information_schema.table_constraints tc
-  join information_schema.key_column_usage kcu
-    on kcu.constraint_name = tc.constraint_name and kcu.table_schema = tc.table_schema
-  left join information_schema.constraint_column_usage ccu
-    on ccu.constraint_name = tc.constraint_name and tc.constraint_type = 'FOREIGN KEY'
-  left join information_schema.referential_constraints rc
-    on rc.constraint_name = tc.constraint_name
-  where tc.table_schema = 'public'
-    and tc.constraint_type in ('PRIMARY KEY', 'FOREIGN KEY', 'UNIQUE')
+    con.conname as name,
+    rel.relname as table_name,
+    con.contype as type,
+    tgt.relname as foreign_table,
+    con.confdeltype as delete_type,
+    (
+      select array_agg(att.attname order by k.ord)
+      from unnest(con.conkey) with ordinality k(attnum, ord)
+      join pg_attribute att on att.attrelid = con.conrelid and att.attnum = k.attnum
+    ) as columns,
+    (
+      select array_agg(att.attname order by k.ord)
+      from unnest(con.confkey) with ordinality k(attnum, ord)
+      join pg_attribute att on att.attrelid = con.confrelid and att.attnum = k.attnum
+    ) as foreign_columns
+  from pg_constraint con
+  join pg_class rel on rel.oid = con.conrelid
+  join pg_namespace ns on ns.oid = rel.relnamespace
+  left join pg_class tgt on tgt.oid = con.confrelid
+  where ns.nspname = 'public' and con.contype in ('p', 'u', 'f')
+  order by con.conname
 `
 
 // Enum types and their variants, so a status column can show what it accepts.
@@ -177,7 +234,7 @@ for (const row of enums) {
 }
 
 const tableNames = [...new Set(columns.map((c) => c.table_name))].filter(
-  (t) => !EXCLUDED_TABLES.includes(t),
+  (t) => baseTableNames.has(t) && !EXCLUDED_TABLES.includes(t),
 )
 
 // Reading order comes from the annotations file, not the alphabet: a map should
@@ -230,20 +287,46 @@ function formatDefault(value) {
   return `\`${stripCasts(value)}\``
 }
 
+// Postgres spells the on-delete rule as a single char in confdeltype.
+const DELETE_RULES = { c: 'on delete cascade', n: 'on delete set null', d: 'on delete set default', r: 'on delete restrict' }
+
+// A composite constraint must never render as though each of its columns
+// carried it alone — "unique" on owner_id and "unique" on image_url claims a
+// uniqueness that neither column has. When a constraint spans several columns,
+// name them all, so the reader can see it is the combination that is
+// constrained.
+// Notes read primary key → foreign key → unique, always. Left to pg_constraint's
+// own row order the notes would shuffle between runs, and the CI diff check
+// would flag a schema that had not changed.
+const CONSTRAINT_ORDER = { p: 0, f: 1, u: 2 }
+
 function notesFor(table, column) {
   const notes = []
-  const forColumn = constraints.filter(
-    (c) => c.table_name === table && c.column_name === column.column_name,
-  )
+  const name = column.column_name
+  const forColumn = constraints
+    .filter((c) => c.table_name === table && (c.columns ?? []).includes(name))
+    .sort((a, b) => CONSTRAINT_ORDER[a.type] - CONSTRAINT_ORDER[b.type] || a.name.localeCompare(b.name))
 
-  if (forColumn.some((c) => c.constraint_type === 'PRIMARY KEY')) notes.push('primary key')
+  for (const c of forColumn) {
+    const cols = c.columns ?? []
+    const composite = cols.length > 1
+    const list = cols.map((col) => `\`${col}\``).join(', ')
 
-  for (const fk of forColumn.filter((c) => c.constraint_type === 'FOREIGN KEY')) {
-    const cascade = fk.delete_rule === 'CASCADE' ? ' (on delete cascade)' : ''
-    notes.push(`→ \`${fk.foreign_table}.${fk.foreign_column}\`${cascade}`)
+    if (c.type === 'p') {
+      notes.push(composite ? `primary key (${list})` : 'primary key')
+    } else if (c.type === 'u') {
+      notes.push(composite ? `unique (${list})` : 'unique')
+    } else if (c.type === 'f') {
+      const target = c.foreign_columns ?? []
+      const rule = DELETE_RULES[c.delete_type]
+      const suffix = rule ? ` (${rule})` : ''
+      const arrow =
+        cols.length > 1 || target.length > 1
+          ? `→ \`${c.foreign_table}\` (${target.join(', ')}) via (${cols.join(', ')})`
+          : `→ \`${c.foreign_table}.${target[0]}\``
+      notes.push(`${arrow}${suffix}`)
+    }
   }
-
-  if (forColumn.some((c) => c.constraint_type === 'UNIQUE')) notes.push('unique')
 
   const values = enumValues.get(column.udt_name)
   if (values) notes.push(values.map((v) => `\`${v}\``).join(' / '))
