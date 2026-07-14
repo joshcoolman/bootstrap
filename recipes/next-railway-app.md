@@ -10,12 +10,15 @@ This is the shape a live production app (`bootsy`) actually runs in.
 - [next-app skill](../skills/next-app/SKILL.md) — Step 1 only. Run the skill
   itself rather than re-deriving its build order here: shell, Paper & Ink
   styles, docs viewer, feature seams, CI.
-- Steps 2–6 below are new instruction-level content specific to this recipe.
-  No standalone `parts/*.md` exists yet for the Postgres data layer, the
-  whitelist auth gate, the bucket storage seam, or the Railway deploy
-  convention — that extraction should wait until this recipe has been run
-  for real once, per this repo's authoring contract. Until then it lives
-  here directly, not split out prematurely.
+- [schema-reference part](../parts/schema-reference.md) — Step 2.7. A generated,
+  read-only markdown map of the database in `/docs`. Extracted from the live
+  `bootsy` run per this repo's authoring contract: it has been built and proven
+  once, so it is a part rather than inline prose.
+- Steps 2–6 below are otherwise new instruction-level content specific to this
+  recipe. No standalone `parts/*.md` exists yet for the whitelist auth gate, the
+  bucket storage seam, or the Railway deploy convention — that extraction should
+  wait until each has been run for real once, per this repo's authoring contract.
+  Until then it lives here directly, not split out prematurely.
 
 This repo already has an `add-user-auth` skill — that one is **Supabase**-based
 multi-user auth with Postgres RLS. The auth gate in Step 3 here is a
@@ -91,6 +94,16 @@ whitelist instead of open signup).
 6. Gate: run `pnpm db:migrate` against the local container, confirm
    `schema_migrations` gets created and the first migration is recorded;
    insert one throwaway row via a scratch script and read it back.
+7. Add the **schema reference** — see
+   [parts/schema-reference.md](../parts/schema-reference.md). `pnpm db:gen`
+   introspects the live database and generates `docs/schema/`: a read-only
+   markdown map, one page per table, rendered in the `/docs` viewer. Do this as
+   soon as the first real migration lands, not later — its value is that an
+   agent (and you) can read the current shape of the database in one place
+   instead of replaying the whole `migrations/` changelog, and that only
+   compounds as migrations accumulate. The part's CI step (regenerate, then
+   `git diff --exit-code`) is what keeps the map honest; without it, skip the
+   whole thing rather than ship a document that can quietly go stale.
 
 ## Step 3 — Multi-user whitelist auth (not Supabase)
 
