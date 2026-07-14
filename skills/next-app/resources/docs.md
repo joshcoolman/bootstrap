@@ -193,7 +193,7 @@ Owns all interactivity — same layout, same behavior as `vite-app`'s
 ```tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -201,20 +201,39 @@ import { Menu, X } from 'lucide-react'
 import { appMeta } from '#/app-meta'
 import { groupBySection, type Doc } from '#/features/docs/build-docs'
 
+// The URL hash is the single source of truth for which doc is open, which means
+// reading it has to survive server rendering: the server has no window, so
+// reading it during render would emit the default doc on the server and the
+// hashed doc on the client — different text, hydration failure. Deep-linking
+// /docs#some-doc and refreshing hit exactly that.
+//
+// useSyncExternalStore exists for this: React renders getServerSnapshot on the
+// server and again during hydration (so both agree), then immediately re-renders
+// with the real hash. No state to keep in sync, and no setState in an effect
+// (which `react-hooks/set-state-in-effect` rejects — the naive useEffect version
+// of this fix fails lint).
+function subscribeToHash(onChange: () => void): () => void {
+  window.addEventListener('hashchange', onChange)
+  return () => window.removeEventListener('hashchange', onChange)
+}
+
+const getHash = () => window.location.hash.replace(/^#/, '')
+const getServerHash = () => ''
+
 export function DocsViewer({ docs }: { docs: Doc[] }) {
   const sections = groupBySection(docs)
   const defaultId = sections[0]?.docs[0]?.id ?? docs[0]?.id ?? ''
-  const [activeId, setActiveId] = useState(() => {
-    if (typeof window === 'undefined') return defaultId
-    const fromHash = window.location.hash.replace(/^#/, '')
-    return docs.some((d) => d.id === fromHash) ? fromHash : defaultId
-  })
+  const hashId = useSyncExternalStore(subscribeToHash, getHash, getServerHash)
   const [navOpen, setNavOpen] = useState(false)
 
+  const activeId = docs.some((d) => d.id === hashId) ? hashId : defaultId
+
   function select(id: string) {
-    setActiveId(id)
     setNavOpen(false)
+    // replaceState keeps a long docs-browsing session from filling the back
+    // button, but it does not fire hashchange — so tell the store ourselves.
     window.history.replaceState(null, '', `#${id}`)
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
     window.scrollTo({ top: 0 })
   }
 
@@ -314,17 +333,39 @@ that asymmetry, both internal links in this skill use `next/link` — it's
 also just the correct idiom for internal navigation in Next, enabling
 client-side transitions instead of a full page reload.
 
-**The hash-sync logic uses a lazy `useState` initializer, not an
-effect+`setState`** — confirmed live: the original effect-based version
-(`useEffect` reading `window.location.hash` then calling `setActiveId`)
-trips `react-hooks/set-state-in-effect` ("calling setState synchronously
-within an effect can trigger cascading renders"). Reading the hash inside
-the state initializer instead (guarded with `typeof window === 'undefined'`
-for the server-rendered pass) fixes the lint error *and* a real bug the
-effect-based version had: linking to `/docs#some-doc` used to flash the
-default doc first, then swap to the linked one once the effect ran after
-paint — the initializer reads the hash before the first render instead, so
-there's no flash.
+**The hash-sync logic uses `useSyncExternalStore`.** Both of the obvious
+approaches are wrong, and this skill shipped each of them in turn before
+landing here — so don't "simplify" it back:
+
+- **`useEffect` + `setActiveId`** trips `react-hooks/set-state-in-effect`
+  ("calling setState synchronously within an effect can trigger cascading
+  renders"). Fails lint.
+- **A lazy `useState` initializer** reading `window.location.hash` (guarded
+  with `typeof window === 'undefined'`) passes lint, and is what this skill
+  recommended for a while. It is a **hydration bug**: the server has no
+  `window`, so it renders the *default* doc while the client renders the
+  *hashed* one. Different text. Deep-linking `/docs#some-doc` and refreshing
+  throws "Hydration failed because the server rendered text didn't match the
+  client" and makes React throw away the server HTML and re-render the whole
+  tree. Caught live in `bootsy`.
+
+`useSyncExternalStore` is the tool built for exactly this: `getServerSnapshot`
+renders on the server *and* during hydration (so both sides agree), then React
+re-renders with the real client hash. Lint-clean, no state to keep in sync, and
+the URL hash becomes the single source of truth for which doc is open.
+
+The cost is a brief flash of the default doc when deep-linking, which the lazy
+initializer avoided. That flash is **unavoidable with a hash** under SSR —
+fragments are never sent to the server, so no server render can know which doc
+you asked for. Correctness beats the flash: a hydration mismatch is not a
+cosmetic problem. If the flash ever matters, the fix is not to reintroduce the
+bug — it's to move the doc selector into a *search param* (`/docs?doc=some-doc`),
+which the server can read, and use `useSearchParams`.
+
+One non-obvious detail: `select()` uses `history.replaceState` so a long
+browsing session doesn't fill the back button — but `replaceState` does **not**
+fire `hashchange`, so the component dispatches the event itself. Remove that
+line and clicking a sidebar item silently stops working.
 
 ## Known, non-blocking build warning
 
