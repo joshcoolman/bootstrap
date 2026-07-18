@@ -44,10 +44,22 @@ Reasoning:
   provisioning + deploy is where the ceremony actually is.
 - Nothing is lost permanently — deleted skills stay in the git log.
 
-**Framework is narrowed; host is deliberately not.** Railway and Vercel have
-genuinely different strengths (persistent process vs. zero-config deploy), and
-auth and storage are built to work identically on both. Hosting stays a per-app
-choice.
+**Host: Railway is primary.** The deciding argument is the one-to-two-services
+budget — Railway is the only option where app, Postgres, and bucket are the same
+vendor and the same dashboard, so the default stack is *one* service. Vercel +
+Neon + R2 is three.
+
+It also has the one genuine capability the other lacks: a persistent process, so
+work started in a request continues after the response returns. Vercel freezes
+the lambda and needs `waitUntil` with its own timeout. For AI-at-the-core apps
+that copy bytes or poll a provider, that gap shows up by week two.
+
+Auth and storage are still built to be host-agnostic — that is what makes moving
+an app cheap — but the wizard builds the Railway path first and Vercel second.
+
+Out of scope: **eve stays on Vercel.** It was started as a Vercel-native
+exploration and continues as one. It is a reference implementation, not a
+migration target.
 
 Consequence worth calling out: this dissolves the auth-naming problem. With no
 framework axis, the two auth skills split purely by vendor —
@@ -161,7 +173,14 @@ Two deliberate choices, both learned the hard way:
    the display URL as an identity key — saves, dedupe, and references all break
    an hour later. Carry identity and display separately.
 
-Reference implementation: **Cloudflare R2 via plain `@aws-sdk/client-s3`.**
+Default implementation: **Railway Buckets via plain `@aws-sdk/client-s3`.**
+Keeps the stack at one vendor, and bootsy proves the pattern in production.
+Buckets are private-only, so reads are presigned — see the caveats below.
+
+Documented alternative: **Cloudflare R2**, also via `@aws-sdk/client-s3`. Reach
+for it when an app wants public URLs, a CDN, or hotlinkable images. Swapping is
+a credentials-and-endpoint change, which is the whole reason the contract
+exists.
 
 - Fully S3-compatible from any host — no Workers, no Cloudflare runtime
 - Public URLs without presigning
@@ -169,7 +188,16 @@ Reference implementation: **Cloudflare R2 via plain `@aws-sdk/client-s3`.**
   reads per month
 - Lock-in is near zero: it is the AWS SDK pointed at a different endpoint
 
-Two caveats to write into the part:
+Railway Buckets caveats (from bootsy, running in production):
+
+- Presigned URLs expire — bootsy uses 1 hour and nothing re-signs, so an image
+  the browser re-fetches after that window 403s until a reload. Fix is a
+  `/img/[key]` route that redirects to a fresh presign.
+- Per-request presigning means the URL changes every render, so nothing caches
+  and every image re-downloads on every page load. The same `/img/[key]` route
+  fixes this too. Build it up front.
+
+R2 caveats:
 
 - `r2.dev` is explicitly **not for production** and rate-limits to 429s. Use a
   custom domain on Cloudflare DNS from day one. If there's no domain there, the
@@ -209,8 +237,8 @@ Three fixes, all real:
 3. **Make deploy optional.** It hard-exits if the host CLI is missing, with no
    skip flag. A `--local-only` path should get you running without deploying.
 
-Provider block is pluggable: Railway (Postgres + bucket) or Vercel (Neon or no
-database). Supabase is not an option.
+Provider block is pluggable. **Build Railway first** (app + optional Postgres +
+optional bucket); Vercel second. Supabase is not an option.
 
 ## Order
 
