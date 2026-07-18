@@ -26,6 +26,34 @@ Requirement that settles the auth question: *"let someone else log in if they
 want to check it out."* Deployment Protection can't do that — it gates to the
 Vercel account. Owned auth can: adding a viewer is adding a row.
 
+## Executive decision — Next.js only
+
+One framework. `vite-app`, `add-simple-auth`, `recipes/vite-react-app.md`, and
+`recipes/nest-tanstack-railway-app.md` are removed.
+
+Reasoning:
+
+- **It matches reality.** eve and bootsy are Next. genzen and gimme-image were
+  TanStack and are both retired. prompt-smith is TanStack and has 26 commits.
+  The TanStack apps are the abandoned ones.
+- **Every exploration needs a server.** These are AI-at-the-core apps —
+  server-side keys on every one. `vite-app` exists for apps that don't need a
+  server, which isn't the work being done.
+- **A skill earns its place by the ceremony it saves.** `npm create vite` is
+  already one command; wrapping it adds little. Next + auth + storage +
+  provisioning + deploy is where the ceremony actually is.
+- Nothing is lost permanently — deleted skills stay in the git log.
+
+**Framework is narrowed; host is deliberately not.** Railway and Vercel have
+genuinely different strengths (persistent process vs. zero-config deploy), and
+auth and storage are built to work identically on both. Hosting stays a per-app
+choice.
+
+Consequence worth calling out: this dissolves the auth-naming problem. With no
+framework axis, the two auth skills split purely by vendor —
+`add-supabase-auth` (rent it) and `add-selfhost-auth` (own it). No suffixes, no
+mode flags.
+
 ## Target shape
 
 `pnpm setup` on a fresh clone produces a live URL with:
@@ -56,26 +84,17 @@ only irreplaceable artifact in this plan.
 
 ## Phase 2 — owned auth
 
-New skill `add-selfhost-auth`. Nothing is deleted — the existing Supabase skills
-get renamed instead.
-
-**Rename, don't delete.** `add-simple-auth` and `add-user-auth` are validated
-work and Supabase auth is still a legitimate fast path if you don't mind the
-vendor. The problem is the naming: neither says Supabase, which is how a repo
-ends up accidentally coupled to it.
-
-They also split on the wrong axis. Simple-vs-multi-user is a *credential store*
-difference — a flag, not a skill boundary. The boundary that matters is vendor:
+Two auth skills, split by vendor:
 
 | Now | Becomes |
 | --- | --- |
-| `add-simple-auth` | `add-supabase-auth --mode=shared` |
-| `add-user-auth` | `add-supabase-auth --mode=users` |
-| — | `add-selfhost-auth` (new, and the recommended default) |
+| `add-simple-auth` (Vite) | deleted with the Vite shell |
+| `add-user-auth` (Next) | `add-supabase-auth` — rent it |
+| — | `add-selfhost-auth` — own it, and the recommended default |
 
-Two auth skills, split by vendor, each with a mode flag. `add-selfhost-auth` is
-what the README points at; `add-supabase-auth` stays available and honestly
-labelled.
+The old names hid the vendor entirely, which is how a repo ends up accidentally
+coupled to it. `add-supabase-auth` stays available and honestly labelled;
+`add-selfhost-auth` is what the README points at.
 
 Source: `~/repos/bootsy/src/features/auth/` — running in production, ~200 lines.
 
@@ -204,10 +223,14 @@ Stop after each for review.
 
 ## Consequences
 
-- `add-simple-auth` + `add-user-auth` merge into `add-supabase-auth` with a
-  `--mode` flag; `add-selfhost-auth` is added as the recommended default. Nothing
-  validated is thrown away. Skill directory renames break any saved slash
-  command referencing the old names.
+- `vite-app`, `add-simple-auth`, `recipes/vite-react-app.md`, and
+  `recipes/nest-tanstack-railway-app.md` are deleted. `add-user-auth` becomes
+  `add-supabase-auth`; `add-selfhost-auth` is added. Skill directory renames
+  break any saved slash command referencing the old names.
+- `parts/shell.md` is 31 Vite/TanStack references deep — effectively the Vite
+  shell's documentation. Either rewrite for Next or delete if `next-app`
+  already carries an equivalent. This is the only cleanup that is work rather
+  than deletion.
 - README's install example currently shows `/bootstrap:add-simple-auth` and
   `/bootstrap:add-user-auth` — both need updating, and the skills table too.
 - Recipes (`next-railway-app.md`, `next-selfhost-app.md`,
