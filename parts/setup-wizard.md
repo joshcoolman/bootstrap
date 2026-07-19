@@ -41,10 +41,15 @@ API key to `.env.example` is all it takes for the wizard to start asking for it.
 This is ported from a working wizard, with three defects corrected. Do not
 reintroduce them.
 
-**1. Mask secret prompts.** The original used `input()` for API keys, which
-echoes them to the terminal — and therefore into any screenshot or screen
-share. This has already leaked one live key. Use `password()` from
-`@inquirer/prompts` for anything secret.
+**1. Mask secret prompts — with asterisks, not silence.** The original used
+`input()` for API keys, which echoes them to the terminal and therefore into
+any screenshot or screen share. This has already leaked one live key.
+
+Use `password()` — but **always pass `mask: '*'`**. Without it, `password`
+renders a blank line as you type, so you can't tell whether a keystroke
+registered. That silent-prompt experience is bad enough that it's *why* the
+original used plain `input()` in the first place. Asterisks give you the
+feedback and none of the exposure; a fix that's annoying to use gets reverted.
 
 **2. Never clobber `.env.local`.** The original overwrote it unconditionally,
 with no merge and no backup — destroying working credentials on a re-run. Read
@@ -168,8 +173,13 @@ if (remaining.length) {
   console.log('\n── API keys ─────────────────────────\n')
   for (const name of remaining) {
     if (values[name]) { console.log(`  ✓ ${name} (already set)`); continue }
-    const ask = SECRET_HINT.test(name) ? password : input
-    const value = await ask({ message: `${name} (enter to skip):`, mask: '*' })
+    const msg = `${name} (enter to skip):`
+    // mask: '*' shows one asterisk per character. Without it, `password`
+    // renders a blank line and you can't tell a keystroke registered —
+    // which is why the original reached for `input` and echoed keys in clear.
+    const value = SECRET_HINT.test(name)
+      ? await password({ message: msg, mask: '*' })
+      : await input({ message: msg })
     if (value) values[name] = value
   }
 }
