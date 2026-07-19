@@ -81,6 +81,7 @@ reading, or for applying a single slice to an existing repo:
 
 | Part | What it covers |
 |------|---------------|
+| [image-store](parts/image-store.md) | Object storage for uploads and generated images: a four-method contract, Railway Buckets by default, R2 as the swap, and the `/img` route that keeps presigned URLs cacheable |
 | [schema-reference](parts/schema-reference.md) | Generated, always-current DB map in `/docs`, with a CI staleness gate |
 | [agent-surface](parts/agent-surface.md) | Giving a personal tool an agent surface: one core, two surfaces; blast-radius framing for personal MCP servers |
 
@@ -126,5 +127,4 @@ login action that preserves the typed email, because React 19's
 
 **Up next:** run `/bootstrap:next-app` in a throwaway folder as a fresh
 consumer and drive the real login flow in a browser — the first end-to-end test
-of the merged skill. Then the storage part (`parts/image-store.md`) and a
-clone-to-live setup wizard.
+of the merged skill. Then a clone-to-live setup wizard.
