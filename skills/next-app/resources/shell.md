@@ -42,6 +42,24 @@ what's now proven in that migration.
 Dev port is app-specific — pick one that doesn't conflict with sibling repos
 (`<dev-port>` below). Use pnpm.
 
+Declare `packageManager` with the pnpm version actually installed (check with
+`pnpm -v`), alongside `engines`:
+
+```json
+"engines": { "node": ">=22" },
+"packageManager": "pnpm@11.7.0"
+```
+
+Without it, the dev machine, CI, and the deploy builder each resolve whatever
+pnpm they like, and version-specific behaviour differs between them — that is
+the mechanism behind the `pnpm-workspace.yaml` failure described below, where a
+local install passed and the deploy failed. Pinning here removes the whole class
+rather than the one instance.
+
+**Setting this requires a matching change in `cicd.md`'s workflow** — omit
+`version:` from `pnpm/action-setup`. Specifying a version in both places makes
+the action error out. The two settings must move together.
+
 ```json
 "scripts": {
   "dev": "next dev -p <dev-port>",
@@ -336,6 +354,17 @@ Required, and not optional even though this is a single-package repo — pnpm 11
 reads build-script approvals from here and nowhere else:
 
 ```yaml
+# This repo is a single package. The file exists only to carry allowBuilds,
+# which is the only place pnpm 11 reads build-script approvals from.
+#
+# `packages` is required even so. Once this file exists, pnpm treats the repo as
+# a workspace root, and versions before 11 abort with "packages field missing or
+# empty" — pnpm 11 tolerates its absence, which is exactly what makes it
+# dangerous: the local install passes and the deploy fails. Listing '.' keeps
+# the file valid across pnpm versions.
+packages:
+  - '.'
+
 # pnpm 11 reads build-script approvals from allowBuilds (onlyBuiltDependencies
 # was removed in v11 and is silently ignored if used here, or in a "pnpm" field
 # in package.json).
@@ -350,6 +379,15 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
 ```
+
+**`packages` is not optional, and omitting it is worse than omitting
+`allowBuilds`** — it fails only on pnpm versions older than 11, so a local
+install passes and a deploy fails with `ERR packages field missing or empty`.
+Confirmed live: three consecutive Railway deploys failed this way, and the
+Railway API returned no build logs at all for any of them (only "scheduling
+build on Metal builder"), so the error was visible only in the dashboard. Add
+`packageManager` to `package.json` (below) and the version disagreement that
+makes this possible goes away too.
 
 **This is the highest-value line in this file, because the failure is
 invisible on the machine that writes the code.** `pnpm install` exits 1 with
