@@ -65,7 +65,7 @@ else resolved to). Let `pnpm add` resolve everything together:
 
 ```
 pnpm add next react react-dom lucide-react server-only
-pnpm add -D typescript @types/node @types/react @types/react-dom tailwindcss @tailwindcss/postcss eslint@^9 eslint-config-next eslint-config-prettier prettier vitest @testing-library/react @testing-library/jest-dom jsdom
+pnpm add -D typescript@^5 @types/node @types/react @types/react-dom tailwindcss @tailwindcss/postcss eslint@^9 eslint-config-next eslint-config-prettier prettier vitest @testing-library/react @testing-library/jest-dom jsdom
 ```
 
 `lucide-react` and `server-only` are **production** dependencies, not dev
@@ -77,8 +77,21 @@ installed explicitly; vitest's `environment: 'jsdom'` setting doesn't pull it
 in on its own. `react-markdown`/`remark-gfm` are added later, in the Docs
 step — same sequencing as `vite-app`.
 
-**`eslint@^9` is a real, confirmed pin, not a hand-picked guess** — the one
-exception to "let `pnpm add` resolve everything together." Left unpinned,
+**`typescript@^5` and `eslint@^9` are real, confirmed pins, not hand-picked
+guesses** — the two exceptions to "let `pnpm add` resolve everything together."
+Both were caught live in a fresh scaffold, and both fail as *tool crashes*
+rather than as anything a reader would recognise as a version problem.
+
+Left unpinned, `pnpm add -D typescript` resolves TypeScript **7.x** (currently
+7.0.2, the native rewrite). Next 16.2.10 does not recognise it as a TypeScript
+install at all: `next build` compiles, reaches "Running TypeScript ...", then
+announces "It looks like you're trying to use TypeScript but do not have the
+required package(s) installed," re-runs `pnpm add -D typescript` on its own,
+and dies with `The "id" argument must be of type string. Received undefined`.
+Nothing in that output names the version, so it reads as a broken scaffold.
+Re-check this pin when Next ships a release that detects TypeScript 7.
+
+Left unpinned,
 `pnpm add` resolves `eslint@10.x`, which `eslint-config-next@16.2.10`
 declares support for (its peer range is `>=9.0.0`, no upper bound) but which
 its own bundled `eslint-plugin-react@7.37.5` does not — running `pnpm lint`
@@ -185,15 +198,25 @@ causes spurious type errors depending on whether you last ran `dev` or
 ### `vitest.config.ts`
 
 Same alias, same `passWithNoTests` reasoning as `vite-app` — a fresh scaffold
-has no test files yet and `pnpm test` must still exit 0. The one Next-specific
-addition is excluding `.next/` from vitest's file scan (Next's build output
-would otherwise get walked looking for test files):
+has no test files yet and `pnpm test` must still exit 0. Two Next-specific
+additions: excluding `.next/` from vitest's file scan (Next's build output
+would otherwise get walked looking for test files), and stubbing `server-only`
+(see below):
 
 ```ts
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  resolve: { alias: { '#': '/src' } },
+  resolve: {
+    alias: {
+      '#': '/src',
+      // `server-only` throws on import outside a React Server Component, so any
+      // test touching a server module (credentials.ts) would fail to load. The
+      // real guard is `next build`, which is what actually enforces the
+      // boundary; here the package just has to be inert.
+      'server-only': new URL('./src/test-server-only-stub.ts', import.meta.url).pathname,
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',
@@ -204,10 +227,28 @@ export default defineConfig({
 })
 ```
 
+**The `server-only` alias is required, not optional** — without it the auth
+step's `credentials.test.ts` cannot even load, because `credentials.ts` starts
+with `import 'server-only'` and that package's non-`react-server` entry point
+throws on sight: `Error: This module cannot be imported from a Client Component
+module. It should only be used from a Server Component.` The error names a
+Client Component, so it reads as a mistake in the test rather than an
+environment artifact. Confirmed live. Nothing is lost by stubbing it: the
+boundary it protects is enforced by `next build`, which is a required gate
+anyway.
+
 Also create `src/test-setup.ts`:
 
 ```ts
 import '@testing-library/jest-dom'
+```
+
+and `src/test-server-only-stub.ts`:
+
+```ts
+// Inert stand-in for the `server-only` package under vitest. See the alias in
+// vitest.config.ts for why. Never imported by application code.
+export {}
 ```
 
 ### `src/app-meta.ts`
