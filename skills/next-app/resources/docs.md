@@ -1,5 +1,10 @@
 # Part: docs
 
+> **Note.** This file compares against `vite-app`, a Vite + TanStack Router
+> shell that has since been deleted. Those comparisons are kept because the
+> *reasoning* still explains why each choice was made — but the referent is
+> history, not something you can go read. Next.js is the only shell now.
+
 The docs folder structure plus the in-app `/docs` viewer. Same idea as
 `vite-app`: the markdown files are the human/agent-readable record of intent,
 and the viewer makes them reachable without leaving the app.

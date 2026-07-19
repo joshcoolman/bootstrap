@@ -1,5 +1,10 @@
 # Part: CI/CD
 
+> **Note.** This file compares against `vite-app`, a Vite + TanStack Router
+> shell that has since been deleted. Those comparisons are kept because the
+> *reasoning* still explains why each choice was made — but the referent is
+> history, not something you can go read. Next.js is the only shell now.
+
 Same three tools as `vite-app`, same division of labor, no overlap:
 
 - **Vercel** — native Git integration for deploys and previews

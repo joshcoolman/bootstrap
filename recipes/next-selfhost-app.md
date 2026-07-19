@@ -19,7 +19,7 @@ Railway or Fly.io by mounting one persistent volume.
   here directly, not split out prematurely.
 
 The auth gate in Step 4 is deliberately **not** Supabase-based — unlike this
-repo's `add-simple-auth`/`add-user-auth` skills, it has zero vendor
+repo's former Supabase auth skills, it has zero vendor
 dependency and zero DB dependency. Don't assume it reuses those skills' seam.
 
 ---
@@ -75,7 +75,7 @@ dependency and zero DB dependency. Don't assume it reuses those skills' seam.
 1. Create a `storage` feature folder under `src/features/` with a
    vendor-agnostic contract in `types.ts` — a `FileStore` interface (`put`,
    `get`, `delete`, `urlFor`) shaped deliberately like the `AuthClient`
-   contract in `skills/add-simple-auth`: a stable seam, not a rewrite point.
+   contract the former Supabase auth skills used: a stable seam, not a rewrite point.
 2. Write `local-adapter.ts`: writes under `process.env.STORAGE_ROOT`
    (default `./data/uploads`); reject or normalize any key containing `..`
    or an absolute path — no path-traversal escape hatch. `urlFor(key)`

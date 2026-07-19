@@ -1,5 +1,10 @@
 # Part: styles
 
+> **Note.** This file compares against `vite-app`, a Vite + TanStack Router
+> shell that has since been deleted. Those comparisons are kept because the
+> *reasoning* still explains why each choice was made — but the referent is
+> history, not something you can go read. Next.js is the only shell now.
+
 The same "Paper & Ink" design system as `vite-app` — warm paper, soft
 near-black ink, one muted clay accent, with light and dark modes. Confirmed
 byte-identical in the proven reference migration except for how fonts are

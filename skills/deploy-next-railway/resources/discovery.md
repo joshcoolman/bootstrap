@@ -6,7 +6,7 @@ fill in the judgment calls every later resource depends on. Assume the stack
 (Next.js App Router + pnpm, Postgres via `postgres.js`, optionally a
 Railway-bucket storage feature); never assume the Railway-side state.
 
-Default to `add-user-auth`'s tone, not `add-simple-auth`'s: **infer
+Default to `next-app`'s tone: **infer
 everything you can, only ask when something is genuinely ambiguous or
 irreversible-ish.** Run the probes below silently, report the summary, and
 only stop for a question if a probe surfaces a real judgment call (an

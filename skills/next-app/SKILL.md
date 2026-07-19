@@ -1,51 +1,68 @@
 ---
 name: next-app
-description: Bootstrap a new Next.js App Router app with the Paper & Ink design system — a server-capable sibling to vite-app for apps that need real server-side compute, secrets, or per-user auth. Use when asked to scaffold a new Next.js app, create a starter project that needs a backend, or bootstrap a Next.js React app.
+description: Scaffold a complete Next.js App Router app — Paper & Ink design system, a self-hosted login (scrypt + signed cookie, no vendor, no database), deny-by-default route protection, an empty dashboard, docs viewer, feature seams, and CI. The whole starting point in one pass, ready to build an idea on top of. Use when asked to scaffold a new app, start a new project, create a starter with a login, or bootstrap a Next.js app.
 ---
 
-You are about to scaffold a complete, production-ready Next.js App Router
-app. Read each resource file in order before writing any code — they contain
-the exact file contents, CSS values, and implementation details you need.
+You are about to scaffold a complete, production-ready Next.js App Router app —
+including auth. Read each resource file in order before writing any code; they
+contain the exact file contents, CSS values, and implementation details.
+
+## What this produces
+
+A running, deployable app that is **already protected**, with nothing built on
+top of it yet:
+
+- Styled home page and the Paper & Ink design system
+- `/login` — email + password, self-hosted, no signup route
+- `/dashboard` — empty, guarded, ready to build in
+- Deny-by-default middleware: everything except `/login` requires a session
+- `/docs` viewer reading the repo's own markdown
+- Feature seams, CI, and a `pnpm auth:add-user` script
+
+The intended use is one exploration per app: scaffold, build the single idea,
+deploy, and tear it down when it stops being interesting. Nothing here assumes
+the app will grow into a product.
+
+**Auth is allowlist-shaped** — no signup, no password reset, no OAuth, no
+roles. Access is granted out-of-band by adding an entry to `AUTH_USERS`. This
+is deliberate and covers "just me" and "me plus whoever I show it to." If an
+app ever needs real user accounts, that is the signal to adopt `better-auth`,
+not to extend this.
 
 ## Before you start — check first, only ask if genuinely blocked
 
 Look at the target directory before asking anything (default: the current
-directory — confirmed live that asking the three questions below
-unconditionally, even on an empty throwaway folder, is pure friction with no
-payoff).
+directory — asking questions unconditionally on an empty throwaway folder is
+pure friction with no payoff).
 
-**If the directory is empty** (no files, or only OS cruft like `.DS_Store`,
-or an empty `.git`): infer everything below and go straight to Step 1 — no
+**If the directory is empty** (no files, or only OS cruft like `.DS_Store`, or
+an empty `.git`): infer everything below and go straight to Step 1 — no
 questions.
 
-- **App name** — the directory's own basename, kebab-cased if it isn't
-  already. Used in `package.json`, `app-meta.ts`, and the docs sidebar.
-- **GitHub repo URL** — a plain placeholder, `https://github.com/your-username/<app-name>`.
-  Never call `gh` or otherwise look up who the user actually is on GitHub —
-  this field is cosmetic (used only in `app-meta.ts`'s `repo` field), so a
-  clearly-fake value costs nothing and doesn't assume an identity that
-  wasn't given. This skill only runs `git init` locally; it never creates or
-  queries anything on GitHub itself.
+- **App name** — the directory's own basename, kebab-cased if it isn't already.
+  Used in `package.json`, `app-meta.ts`, the docs sidebar, and the session
+  cookie name.
+- **GitHub repo URL** — a plain placeholder,
+  `https://github.com/your-username/<app-name>`. Never call `gh` or otherwise
+  look up who the user is — this field is cosmetic, so a clearly-fake value
+  costs nothing and doesn't assume an identity that wasn't given. This skill
+  only runs `git init` locally; it never creates or queries anything on GitHub.
 - **Target directory** — the current directory. Always.
 
-**If the directory is NOT empty:** stop and ask before writing anything.
-Name exactly what you found — "this already looks like a git repo with a
+**If the directory is NOT empty:** stop and ask before writing anything. Name
+exactly what you found — "this already looks like a git repo with a
 `package.json`" / "there are already N files here, including an `images/`
 folder — is that meant to be part of this app, or should I use a different
-directory?" Don't guess whether existing content belongs to the scaffold or
-is unrelated clutter; that's the user's call, not an assumption to make
-silently.
+directory?" Don't guess whether existing content belongs to the scaffold or is
+unrelated clutter; that's the user's call.
 
 ## Resources — read these in order
 
-- [Shell](resources/shell.md) — stack, all config files, entry points, exact
-  `next.config.ts`
-- [Styles](resources/styles.md) — Paper & Ink design system, exact CSS
-  values, @theme bridge, the theme-init/theme-toggle client components
-- [Docs](resources/docs.md) — docs/ folder structure and the full `/docs`
-  viewer implementation (the one new, unvalidated piece — see the file)
-- [Knowledge](resources/knowledge.md) — feature seams and knowledge/ folder
-  pattern
+- [Shell](resources/shell.md) — stack, all config files, entry points, exact `next.config.ts`
+- [Styles](resources/styles.md) — Paper & Ink design system, exact CSS values, @theme bridge, theme-init/theme-toggle
+- [Auth](resources/auth.md) — session layer, credentials, middleware, routes, tests, the user-add script (verbatim code)
+- [Docs](resources/docs.md) — docs/ folder structure and the full `/docs` viewer implementation
+- [Knowledge](resources/knowledge.md) — feature seams and knowledge/ folder pattern
 - [CI/CD](resources/cicd.md) — GitHub Actions workflow
 
 ## Build order
@@ -55,11 +72,11 @@ succeeds after Step 1 before writing any source files.
 
 ### Step 1 — Shell
 
-`git init` if `.git` doesn't already exist, write all config and entry files per
+`git init` if `.git` doesn't already exist. Write all config and entry files per
 the shell and styles resources: `package.json`, `next.config.ts`,
-`postcss.config.mjs`, `eslint.config.mjs`, `tsconfig.json`,
-`vitest.config.ts`, `src/test-setup.ts`, `.gitignore`, `src/app-meta.ts`,
-`src/app/layout.tsx`, `src/app/page.tsx`, `src/components/theme-init.tsx`,
+`postcss.config.mjs`, `eslint.config.mjs`, `tsconfig.json`, `vitest.config.ts`,
+`src/test-setup.ts`, `.gitignore`, `src/app-meta.ts`, `src/app/layout.tsx`,
+`src/app/page.tsx`, `src/components/theme-init.tsx`,
 `src/components/theme-toggle.tsx`.
 
 Run `pnpm install`. Fix any install errors before continuing.
@@ -67,63 +84,93 @@ Run `pnpm install`. Fix any install errors before continuing.
 ### Step 2 — Styles
 
 Write the four CSS files per the styles resource: `src/styles/tokens.css`,
-`src/styles/base.css`, `src/styles/typography.css`, `src/styles/index.css`.
+`base.css`, `typography.css`, `index.css`.
 
 Already wired — `layout.tsx` imports `#/styles/index.css` and renders
-`ThemeInit`/`ThemeToggle`. Confirm the app runs with `pnpm dev`, the home
-page renders styled, and the theme toggle works.
+`ThemeInit`/`ThemeToggle`. Confirm the app runs with `pnpm dev`, the home page
+renders styled, and the theme toggle works.
 
-### Step 3 — Docs
+### Step 3 — Auth
 
-Write the four markdown files in `docs/`: `OVERVIEW.md`, `SPEC.md`,
-`PLAN.md`, `STYLE.md`.
+Per the auth resource, write:
+
+- `src/features/auth/` — `hash.mjs`, `hash.d.mts`, `session.ts`,
+  `credentials.ts`, `current-user.ts`, `actions.ts`, `index.ts`
+- `src/features/auth/session.test.ts` and `credentials.test.ts`
+- `src/proxy.ts` — deny-by-default middleware
+- `src/app/login/page.tsx` and `src/app/dashboard/page.tsx`
+- `scripts/add-user.mjs`, plus the `auth:add-user` entry in `package.json`
+- `AUTH_SESSION_SECRET` and `AUTH_USERS` in `.env.example`
+
+Login and dashboard markup follows the Paper & Ink idiom established in Step 2 —
+the auth resource specifies behaviour and state, not styling. The dashboard is
+deliberately empty: a heading, the sign-out control, and nothing else.
+
+Two things the resource explains and you must not shortcut: middleware imports
+`./session` directly and never the barrel (Edge bundle), and the `env` backend
+hashes the email into an opaque id (the session value splits on `.`).
+
+**Gate:** `pnpm test` green — the session and credentials suites both pass.
+`pnpm build` green with zero env vars set.
+
+### Step 4 — Docs
+
+Write the four markdown files in `docs/`: `OVERVIEW.md`, `SPEC.md`, `PLAN.md`,
+`STYLE.md`. `SPEC.md` must state the auth boundary — allowlist, no signup, no
+server-side revocation.
 
 Write `src/features/docs/build-docs.ts`, `src/app/docs/page.tsx`, and
 `src/components/docs-viewer.tsx` using the full implementation from the docs
 resource.
 
-Add `react-markdown` and `remark-gfm` to `package.json` and run
-`pnpm install`.
+Add `react-markdown` and `remark-gfm`, run `pnpm install`, confirm `/docs`
+loads and all four files appear in the sidebar. Note `/docs` is gated like
+everything else.
 
-Confirm `/docs` loads and all four files appear in the sidebar.
+### Step 5 — Knowledge
 
-### Step 4 — Knowledge
+Create `src/features/` seams beyond auth: `core` and `knowledge`, each with a
+`CLAUDE.md` describing its responsibility boundary. Don't invent
+app-specific seams — the app doesn't exist yet, and empty folders named for
+features that were never built are noise.
 
-Create `src/features/` with subfolders: `core`, `generate`, `verify`,
-`knowledge`, `prefs`. Write a `CLAUDE.md` in each describing its
-responsibility boundary.
-
-Write `src/features/knowledge/index.ts` with the `fs` + `server-only` loader.
-
-Create `knowledge/` at the repo root with placeholder `guidance.md` and
+Write `src/features/knowledge/index.ts` with the `fs` + `server-only` loader,
+and create `knowledge/` at the repo root with placeholder `guidance.md` and
 `rubric.md`.
 
-### Step 5 — CI/CD
+### Step 6 — CI/CD
 
-Write `.github/workflows/ci.yml` per the cicd resource.
+Write `.github/workflows/ci.yml` per the cicd resource. It must run lint, test,
+and build with **no env vars set** — the app has to build unconfigured.
 
-### Step 6 — Verify, then launch
+### Step 7 — Verify, then launch
 
-Run `pnpm build`, `pnpm test`, `pnpm lint` — all must pass, with zero env
-vars set.
+Run `pnpm build`, `pnpm test`, `pnpm lint` — all must pass with zero env vars.
+
+Then verify auth for real, in a browser. This is the step that catches what
+tests can't:
+
+1. Generate a credential: `pnpm auth:add-user 'you@example.com' '<password>'`
+2. Write `AUTH_SESSION_SECRET` (`openssl rand -hex 32`) and the printed
+   `AUTH_USERS` entry into `.env.local`
+3. Start `pnpm dev` as a tracked background process (not shell `&`) so it's
+   stoppable rather than orphaned, and poll until it responds
+4. Drive the flow: `/dashboard` redirects to `/login` → wrong password shows an
+   error **and preserves the typed email** → correct password lands on
+   `/dashboard` → hard reload stays signed in → sign out returns to `/login`
+   and `/dashboard` is gated again
+
+**Gate:** every one of those observed in a browser, not inferred from tests.
+The React 19 uncontrolled-field reset in particular only shows up when a real
+form is driven.
 
 Write `CLAUDE.md` at the repo root (agent orientation: what the app does,
-current phase, what to read first).
+current phase, what to read first) and `README.md` (public summary: stack,
+auth boundary, local dev commands, how to add a user).
 
-Write `README.md` (public summary: stack, boundary, local dev commands).
-
-Once all three gates pass, finish with the actual handoff moment, not just a
-pass/fail report:
-
-1. Start `pnpm dev` as a tracked background process (not shell `&`) so it's
-   stoppable rather than orphaned.
-2. Poll `http://localhost:<dev-port>` until it responds — don't open a
-   browser to a connection-refused page.
-3. Open the browser to the home page (`open http://localhost:<dev-port>` on
-   macOS — `xdg-open` on Linux, `start` on Windows).
-4. Leave the dev server running. That's the point: the user picks up from a
-   live, already-open app, not one they have to start themselves.
-5. Mention that `/docs` is live on the same server.
+Finish at the handoff moment, not a pass/fail report: leave the dev server
+running, open the browser to the home page, and tell the user they're signed in
+and where `/docs` lives. The point is that they pick up from a live app.
 
 ## What the finished repo looks like
 
@@ -131,51 +178,50 @@ pass/fail report:
 your-app/
 ├── CLAUDE.md
 ├── README.md
+├── .env.example                      ← AUTH_SESSION_SECRET, AUTH_USERS
 ├── docs/
-│   ├── OVERVIEW.md
-│   ├── PLAN.md
-│   ├── SPEC.md
-│   └── STYLE.md
+│   ├── OVERVIEW.md  SPEC.md  PLAN.md  STYLE.md
 ├── knowledge/
-│   ├── guidance.md
-│   └── rubric.md
+│   ├── guidance.md  rubric.md
+├── scripts/
+│   └── add-user.mjs                  ← prints a credential to paste
 ├── src/
 │   ├── app-meta.ts
 │   ├── test-setup.ts
+│   ├── proxy.ts                      ← deny-by-default middleware
 │   ├── app/
-│   │   ├── layout.tsx               ← fonts + theme wiring here
-│   │   ├── page.tsx
-│   │   └── docs/
-│   │       └── page.tsx             ← Server Component, reads fs
+│   │   ├── layout.tsx                ← fonts + theme wiring
+│   │   ├── page.tsx                  ← home (gated)
+│   │   ├── login/page.tsx            ← the only public route
+│   │   ├── dashboard/page.tsx        ← empty, gated — build here
+│   │   └── docs/page.tsx             ← Server Component, reads fs
 │   ├── components/
-│   │   ├── theme-init.tsx
-│   │   ├── theme-toggle.tsx
-│   │   └── docs-viewer.tsx          ← Client Component
+│   │   ├── theme-init.tsx  theme-toggle.tsx  docs-viewer.tsx
 │   ├── features/
-│   │   ├── core/CLAUDE.md
-│   │   ├── generate/CLAUDE.md
-│   │   ├── verify/CLAUDE.md
-│   │   ├── docs/build-docs.ts
-│   │   ├── knowledge/
+│   │   ├── auth/
 │   │   │   ├── CLAUDE.md
-│   │   │   └── index.ts             ← server-only
-│   │   └── prefs/CLAUDE.md
+│   │   │   ├── hash.mjs  hash.d.mts  ← shared with scripts/add-user.mjs
+│   │   │   ├── session.ts            ← Edge-safe, Web Crypto only
+│   │   │   ├── credentials.ts        ← scrypt, AUTH_USERS allowlist
+│   │   │   ├── current-user.ts       ← throws when unauthenticated
+│   │   │   ├── actions.ts            ← login / logout
+│   │   │   ├── index.ts              ← barrel — never Edge-imported
+│   │   │   └── session.test.ts  credentials.test.ts
+│   │   ├── core/CLAUDE.md
+│   │   ├── docs/build-docs.ts
+│   │   └── knowledge/
+│   │       ├── CLAUDE.md
+│   │       └── index.ts              ← server-only
 │   └── styles/
-│       ├── index.css
-│       ├── tokens.css
-│       ├── base.css
-│       └── typography.css
+│       ├── index.css  tokens.css  base.css  typography.css
 ├── .github/workflows/ci.yml
-├── package.json
-├── next.config.ts
-├── postcss.config.mjs
-├── eslint.config.mjs
-├── tsconfig.json
-├── vitest.config.ts
+├── package.json  next.config.ts  postcss.config.mjs
+├── eslint.config.mjs  tsconfig.json  vitest.config.ts
 └── .gitignore
 ```
 
-Phase 0 complete. The dev server is already running and the browser is
-already open on the home page — the docs viewer works, the style system is
-live, and the feature seams are in place, on a framework that can also host
-real server-side compute when a feature needs it. Pick up from there.
+Phase 0 complete. The dev server is running, the browser is open, and you're
+signed in. The style system is live, `/docs` works, the app is protected, and
+`/dashboard` is empty and waiting. Build the one idea there.
+
+To take it live: `/bootstrap:deploy-next-railway`.
