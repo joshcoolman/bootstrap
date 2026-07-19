@@ -75,11 +75,17 @@ succeeds after Step 1 before writing any source files.
 `git init` if `.git` doesn't already exist. Write all config and entry files per
 the shell and styles resources: `package.json`, `next.config.ts`,
 `postcss.config.mjs`, `eslint.config.mjs`, `tsconfig.json`, `vitest.config.ts`,
-`src/test-setup.ts`, `.gitignore`, `src/app-meta.ts`, `src/app/layout.tsx`,
-`src/app/page.tsx`, `src/components/theme-init.tsx`,
-`src/components/theme-toggle.tsx`.
+`pnpm-workspace.yaml`, `src/test-setup.ts`, `src/test-server-only-stub.ts`,
+`.gitignore`, `src/app-meta.ts`, `src/app/layout.tsx`, `src/app/page.tsx`,
+`src/components/theme-init.tsx`, `src/components/theme-toggle.tsx`.
 
 Run `pnpm install`. Fix any install errors before continuing.
+
+Do not skip `pnpm-workspace.yaml` on the grounds that this is a single-package
+repo — it carries the `allowBuilds` approvals, without which `pnpm install`
+exits 1 on any clean machine. It will still appear to work on the machine you
+are scaffolding on, so treat the file as required rather than verifying by
+running the install once. See `shell.md`.
 
 ### Step 2 — Styles
 
@@ -187,7 +193,7 @@ your-app/
 │   └── add-user.mjs                  ← prints a credential to paste
 ├── src/
 │   ├── app-meta.ts
-│   ├── test-setup.ts
+│   ├── test-setup.ts  test-server-only-stub.ts
 │   ├── proxy.ts                      ← deny-by-default middleware
 │   ├── app/
 │   │   ├── layout.tsx                ← fonts + theme wiring
@@ -217,6 +223,7 @@ your-app/
 ├── .github/workflows/ci.yml
 ├── package.json  next.config.ts  postcss.config.mjs
 ├── eslint.config.mjs  tsconfig.json  vitest.config.ts
+├── pnpm-workspace.yaml               ← allowBuilds; required, not optional
 └── .gitignore
 ```
 

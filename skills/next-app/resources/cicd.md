@@ -47,9 +47,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version:` — package.json's packageManager field is the single source
+      # of truth. Specifying both makes pnpm/action-setup@v4 error out.
       - uses: pnpm/action-setup@v4
-        with:
-          version: latest
 
       - uses: actions/setup-node@v4
         with:
@@ -73,6 +73,13 @@ jobs:
 — lint + test + build together are the complete quality signal, same as
 `vite-app`, and it must stay green with **zero secrets and zero env vars**
 for a bare scaffold with no backend wired up yet.
+
+**`pnpm/action-setup` deliberately has no `version:`.** `package.json`'s
+`packageManager` field pins pnpm (see `shell.md`), and `pnpm/action-setup@v4`
+errors out when a version is given in both places — a failure that breaks every
+PR at once, independent of whatever change is under test. Pin in exactly one
+place, and let it be `packageManager`, since the deploy builder reads that too
+and the workflow file is not.
 
 ## Claude GitHub App — AI review
 
