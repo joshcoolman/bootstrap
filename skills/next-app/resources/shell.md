@@ -330,6 +330,53 @@ corrects that attribute client-side and React would otherwise flag the
 mismatch. See `styles.md` for why this isn't a zero-flash pre-paint script
 the way `vite-app`'s `index.html` is, and what that trade-off costs.
 
+### `pnpm-workspace.yaml`
+
+Required, and not optional even though this is a single-package repo — pnpm 11
+reads build-script approvals from here and nowhere else:
+
+```yaml
+# pnpm 11 reads build-script approvals from allowBuilds (onlyBuiltDependencies
+# was removed in v11 and is silently ignored if used here, or in a "pnpm" field
+# in package.json).
+#
+# Without these, `pnpm install` exits 1 with ERR_PNPM_IGNORED_BUILDS on a clean
+# machine — CI, or a deploy. It passes locally, because a dev machine's pnpm
+# store usually has them approved already from another project.
+#
+# sharp comes from Next, unrs-resolver from eslint. Both arrive with the base
+# scaffold, so this file is required from day one.
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+```
+
+**This is the highest-value line in this file, because the failure is
+invisible on the machine that writes the code.** `pnpm install` exits 1 with
+`ERR_PNPM_IGNORED_BUILDS: sharp@0.34.5, unrs-resolver@1.12.2` on any machine
+whose pnpm store has not already approved them — which means CI and the deploy
+builder, but almost never the developer's laptop, where some earlier project
+answered the prompt long ago. Confirmed live: a scaffold that had been green
+locally all day failed CI on its first push, at the install step, before a
+single test ran.
+
+Two traps beyond the file simply being missing:
+
+- **`onlyBuiltDependencies` in `package.json` does not work.** pnpm 11 prints
+  `The "pnpm" field in package.json is no longer read by pnpm` and ignores it,
+  so the install still fails — but now with a warning that reads like a
+  deprecation notice rather than the cause. The setting moved to
+  `pnpm-workspace.yaml`, and in v11 the key there is `allowBuilds`, not
+  `onlyBuiltDependencies`.
+- **A green local install proves nothing here.** The only real check is
+  `rm -rf node_modules && pnpm install` on a machine that has never approved
+  these, or simply watching the first CI run.
+
+Add packages to `allowBuilds` as dependencies introduce them; native build
+scripts arrive with things like `esbuild`, `lightningcss`, and
+`msgpackr-extract`. The consumer that surfaced this had hit the same class of
+bug three separate times across two stacks.
+
 ### `.gitignore`
 
 ```
@@ -353,3 +400,5 @@ next-env.d.ts
   where `tsc` is a separate prefix step
 - `pnpm test` exits 0 (no test files is fine — `passWithNoTests: true` is set)
 - `pnpm lint` passes
+- `rm -rf node_modules && pnpm install` still runs clean — the check that
+  catches a missing `allowBuilds` entry before CI does
