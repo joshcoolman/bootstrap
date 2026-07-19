@@ -5,7 +5,7 @@
     {
       "name": "bootstrap",
       "source": "./",
-      "description": "Skills for scaffolding and layering web apps: vite-app / next-app (new shells) and add-simple-auth / add-user-auth (shared-credential or genuine multi-user Supabase login layers)."
+      "description": "Next.js only. next-app scaffolds a complete app with a self-hosted login and a guarded, empty dashboard; deploy-next-railway takes it live on Railway."
     }
   ]
 }

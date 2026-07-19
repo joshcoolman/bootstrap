@@ -474,7 +474,7 @@ the CI diff check depends on.
 ## Docs viewer — three changes
 
 The generated pages land in `docs/schema/`, which the `/docs` viewer already
-globs. Three adjustments to the classifier in [docs](docs.md) (`build-docs.ts` in
+globs. Three adjustments to the classifier in [docs](../skills/next-app/resources/docs.md) (`build-docs.ts` in
 the Next variant, `docs.tsx` in the Vite one — the logic is identical):
 
 **Give schema its own section**, or eleven pages flood "Start here":

@@ -22,7 +22,7 @@ available in the session.
 
 **Extracted directly from `recipes/next-railway-app.md` Step 6** (itself
 sourced from a live production app, `bootsy`) rather than built fresh in a
-disposable mule — the same deviation `add-user-auth` took from this repo's
+disposable mule — a deliberate deviation from this repo's
 usual mule-first loop. This is a v1 draft **one step further from proven**
 than that precedent: `next-railway-app.md` Step 6 is validated only in its
 individually-proven pieces (Postgres provisioning, bucket credentials,

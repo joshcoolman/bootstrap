@@ -1,5 +1,10 @@
 # Part: shell
 
+> **Note.** This file compares against `vite-app`, a Vite + TanStack Router
+> shell that has since been deleted. Those comparisons are kept because the
+> *reasoning* still explains why each choice was made — but the referent is
+> history, not something you can go read. Next.js is the only shell now.
+
 The base scaffold every server-capable app starts from. Next.js App Router
 instead of Vite — same conventions, project shape, and Vercel deploy target as
 `vite-app`, adapted to a framework that type-checks and can host real
@@ -112,9 +117,9 @@ export default config
 
 ### `eslint.config.mjs`
 
-Copy verbatim (adapt point: none yet — an `add-user-auth` skill may layer a
+Copy verbatim (adapt point: none yet — a future layering skill may add a
 `scripts/**/*.mjs` override block into this file later, before the
-`prettier` entry, the same way `add-simple-auth` does for `vite-app`):
+`prettier` entry):
 
 ```js
 import { defineConfig, globalIgnores } from 'eslint/config'

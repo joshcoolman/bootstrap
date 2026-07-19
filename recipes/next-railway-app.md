@@ -20,12 +20,12 @@ This is the shape a live production app (`bootsy`) actually runs in.
   wait until each has been run for real once, per this repo's authoring contract.
   Until then it lives here directly, not split out prematurely.
 
-This repo already has an `add-user-auth` skill — that one is **Supabase**-based
+This repo formerly had an `add-user-auth` skill — that one was **Supabase**-based
 multi-user auth with Postgres RLS. The auth gate in Step 3 here is a
 genuinely different, Railway-native alternative: zero vendor dependency
 beyond Postgres itself, a hand-rolled signed-cookie session, and a
 whitelist-only `users` table with no signup route. Don't assume this recipe
-reuses `add-user-auth`'s seam, and don't assume this is worse — it's simply
+reuses that seam, and don't assume this is worse — it's simply
 a different tradeoff (no vendor account, no RLS, an operator-provisioned
 whitelist instead of open signup).
 

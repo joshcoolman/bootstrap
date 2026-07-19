@@ -1,5 +1,10 @@
 # Part: knowledge
 
+> **Note.** This file compares against `vite-app`, a Vite + TanStack Router
+> shell that has since been deleted. Those comparisons are kept because the
+> *reasoning* still explains why each choice was made — but the referent is
+> history, not something you can go read. Next.js is the only shell now.
+
 Same two things as `vite-app`: the `knowledge/` folder (plain markdown files
 that encode domain taste) and the `src/features/` seam pattern (the
 structural skeleton that separates mechanism from knowledge and keeps
