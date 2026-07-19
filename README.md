@@ -126,7 +126,26 @@ session cookie splits on `.` and an email as the id breaks the parse; and a
 login action that preserves the typed email, because React 19's
 `useActionState` resets uncontrolled fields on every call.
 
-**Up next:** run `/bootstrap:next-app` in a throwaway folder as a fresh
-consumer and drive the real login flow in a browser. Nothing on this branch has
-executed yet — the auth code, the storage part, and the wizard are all written
-and none are run. That first consumer run is the gate before merging.
+**The first consumer run happened (2026-07-18).** `/bootstrap:next-app` scaffolded
+`prompt-smith` end to end: install, styles, auth, docs, seams, CI, then the real
+login flow driven in a browser — redirect when signed out, wrong password
+preserving the typed email, sign-in, reload, sign-out, re-gate. The auth code
+works. Three fixes came back from it, all now in the skill:
+
+- **`typescript@^5` is a required pin.** Unpinned, pnpm resolves TypeScript 7.x,
+  which Next 16.2.10 does not recognise as a TypeScript install — `next build`
+  tries to reinstall it and dies on `The "id" argument must be of type string`.
+  Nothing in that output names the version.
+- **`vitest.config.ts` must stub `server-only`.** The skill mandates both
+  `import 'server-only'` in `credentials.ts` and a `credentials.test.ts`; without
+  an alias the suite cannot load, and the error blames a Client Component.
+- **`typography.css` was unrecoverable from the skill.** `styles.md` pointed at
+  `skills/vite-app/resources/styles.md`, deleted in `2ba11ff`. The run had to
+  recover it from git history. Now inlined.
+
+The pattern in all three: a failure that surfaces as a tool crash or a misleading
+error, never as the thing that is actually wrong.
+
+**Up next:** the storage part and the setup wizard still have not executed —
+`prompt-smith` used neither. Both remain unrun code. The next consumer run that
+needs object storage or a clone-to-live path is their gate.

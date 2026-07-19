@@ -347,6 +347,12 @@ export * from './current-user'
 
 Two suites, both required by the build gates.
 
+`credentials.test.ts` needs the **`server-only` alias in `vitest.config.ts`**
+(see `shell.md`). Without it the suite fails to load entirely — `credentials.ts`
+opens with `import 'server-only'`, which throws outside a React Server
+Component. The error blames a Client Component, so it looks like a broken test
+rather than a missing alias.
+
 ### `session.test.ts`
 
 Cover: round-trip returns the userId; a tampered signature is rejected; a
