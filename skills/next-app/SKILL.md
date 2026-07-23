@@ -121,9 +121,15 @@ hashes the email into an opaque id (the session value splits on `.`).
 
 ### Step 4 — Docs
 
-Write the four markdown files in `docs/`: `OVERVIEW.md`, `SPEC.md`, `PLAN.md`,
-`STYLE.md`. `SPEC.md` must state the auth boundary — allowlist, no signup, no
-server-side revocation.
+Write the markdown files in `docs/`: `OVERVIEW.md`, `SPEC.md`,
+`CODE-STANDARDS.md`, `STYLE.md`. `SPEC.md` must state the auth boundary —
+allowlist, no signup, no server-side revocation. `CODE-STANDARDS.md` is the
+repo's own copy of the project standard (`docs.md` gives the template) — it is
+what makes a freshly-scaffolded app carry the conventions it's meant to follow.
+
+Do **not** write `docs/PLAN.md`. The standard is explicit: plans, tasks, and
+bugs live as GitHub issues, never as a markdown file in `docs/`. Build order and
+"what's next" belong in the README `## Status` block (Step 7) and in issues.
 
 Write `src/features/docs/build-docs.ts`, `src/app/docs/page.tsx`, and
 `src/components/docs-viewer.tsx` using the full implementation from the docs
@@ -135,10 +141,14 @@ everything else.
 
 ### Step 5 — Knowledge
 
-Create `src/features/` seams beyond auth: `core` and `knowledge`, each with a
-`CLAUDE.md` describing its responsibility boundary. Don't invent
-app-specific seams — the app doesn't exist yet, and empty folders named for
-features that were never built are noise.
+Create `src/features/` seams beyond auth: `core` and `knowledge`. Give
+`knowledge` a `CLAUDE.md` — its server-only boundary is a real invariant that
+fails silently if violated, exactly what a boundary `CLAUDE.md` is for. `core`
+gets one only once it owns something non-obvious; an empty seam with nothing to
+say correctly has no `CLAUDE.md` (per the standard — a missing one is right when
+there's nothing to warn about). Don't invent app-specific seams — the app
+doesn't exist yet, and empty folders named for features that were never built
+are noise.
 
 Write `src/features/knowledge/index.ts` with the `fs` + `server-only` loader,
 and create `knowledge/` at the repo root with placeholder `guidance.md` and
@@ -174,6 +184,20 @@ Write `CLAUDE.md` at the repo root (agent orientation: what the app does,
 current phase, what to read first) and `README.md` (public summary: stack,
 auth boundary, local dev commands, how to add a user).
 
+The README **must** end with a `## Status` block — the standard makes it the
+primary cross-session orientation surface, paired with open issues. Seed it so
+`/where-are-we` works from day one:
+
+```markdown
+## Status
+
+**Last shipped:** Phase 0 scaffold — styled home, self-hosted login, guarded
+empty dashboard, `/docs` viewer, CI green with zero env vars.
+
+**Up next:** build the one idea in `/dashboard`. Plans and tasks live as GitHub
+issues, not here.
+```
+
 Finish at the handoff moment, not a pass/fail report: leave the dev server
 running, open the browser to the home page, and tell the user they're signed in
 and where `/docs` lives. The point is that they pick up from a live app.
@@ -186,7 +210,7 @@ your-app/
 ├── README.md
 ├── .env.example                      ← AUTH_SESSION_SECRET, AUTH_USERS
 ├── docs/
-│   ├── OVERVIEW.md  SPEC.md  PLAN.md  STYLE.md
+│   ├── OVERVIEW.md  SPEC.md  CODE-STANDARDS.md  STYLE.md
 ├── knowledge/
 │   ├── guidance.md  rubric.md
 ├── scripts/
@@ -213,7 +237,7 @@ your-app/
 │   │   │   ├── actions.ts            ← login / logout
 │   │   │   ├── index.ts              ← barrel — never Edge-imported
 │   │   │   └── session.test.ts  credentials.test.ts
-│   │   ├── core/CLAUDE.md
+│   │   ├── core/                       ← seam; no CLAUDE.md until it owns something
 │   │   ├── docs/build-docs.ts
 │   │   └── knowledge/
 │   │       ├── CLAUDE.md

@@ -1,17 +1,10 @@
 # Part: styles
 
-> **Note.** This file compares against `vite-app`, a Vite + TanStack Router
-> shell that has since been deleted. Those comparisons are kept because the
-> *reasoning* still explains why each choice was made — but the referent is
-> history, not something you can go read. Next.js is the only shell now.
-
-The same "Paper & Ink" design system as `vite-app` — warm paper, soft
-near-black ink, one muted clay accent, with light and dark modes. Confirmed
-byte-identical in the proven reference migration except for how fonts are
-named (self-hosted via `next/font`, not loaded from a CDN `<link>`) and one
-dead selector Next has no use for. Same bet as `vite-app`: `src/styles/` is a
-self-contained, portable unit — copy it and five (here, four) touch-points and
-the whole visual identity moves.
+The "Paper & Ink" design system — warm paper, soft near-black ink, one muted
+clay accent, with light and dark modes. Fonts are self-hosted via `next/font`
+rather than loaded from a CDN `<link>`. `src/styles/` is a self-contained,
+portable unit — copy it and its four touch-points and the whole visual
+identity moves.
 
 ## The four CSS files
 
@@ -28,16 +21,15 @@ src/styles/
 
 ### `tokens.css`
 
-Same color, spacing, radius, type-scale, motion, and border-width contract
-as `vite-app`'s, adapted in one way: the four `--font-*` stacks reference
-the CSS variables `next/font/google` generates in `layout.tsx`
-(`--font-ibm-plex-sans`, `--font-martel`, `--font-space-mono`) instead of raw
-Google Fonts family-name strings — the fonts are self-hosted, not loaded from
-a CDN, so there's no `'IBM Plex Sans'` string to fall back on if the variable
-isn't set yet.
+The color, spacing, radius, type-scale, motion, and border-width contract.
+The four `--font-*` stacks reference the CSS variables `next/font/google`
+generates in `layout.tsx` (`--font-ibm-plex-sans`, `--font-martel`,
+`--font-space-mono`) rather than raw Google Fonts family-name strings — the
+fonts are self-hosted, not loaded from a CDN, so there's no `'IBM Plex Sans'`
+string to fall back on if the variable isn't set yet.
 
-**One correction from a live run, shared with `vite-app`'s copy of this
-file:** the spacing/radius/type-scale/motion/border-width values below were
+**One correction from a live run:** the
+spacing/radius/type-scale/motion/border-width values below were
 previously only described in a comment (`/* spacing: --space-1 (4px)
 through --space-9 (80px) */`), never actually declared — `typography.css`
 and `base.css` reference `var(--space-4)`, `var(--dur-base)`, etc., but those
@@ -124,8 +116,8 @@ or the fade-in animation looks off:
 
 ### `base.css`
 
-Identical to `vite-app`'s except the min-height selector drops `#root` —
-App Router has no such element, so `html, body` alone covers it:
+The min-height selector covers `html, body` only — App Router has no `#root`
+element to include:
 
 ```css
 /* ════════════════════════════════════════════════════════════════════════════
@@ -179,10 +171,7 @@ Copy verbatim, no adaptation needed. Two things:
 2. **`.prose`** / **`.prose.compact`** — the long-form reading layer used by
    the `/docs` viewer (see `docs.md`).
 
-> Previously this section said "identical to `skills/vite-app/resources/styles.md`'s
-> `typography.css` block — copy it as-is." That skill was deleted in `2ba11ff`,
-> which made the file unrecoverable from the skill alone; a live run had to dig
-> it out of git history. It is inlined below so this skill is self-contained.
+The full block is inlined below so this skill is self-contained:
 
 ```css
 /* ════════════════════════════════════════════════════════════════════════════
@@ -493,9 +482,8 @@ Copy verbatim, no adaptation needed. Two things:
 
 ### `index.css`
 
-Same order and same `@theme inline` mapping as `vite-app` — Tailwind v4's
-import syntax doesn't change based on whether it's wired through the Vite
-plugin or PostCSS:
+The import order and `@theme inline` mapping below — Tailwind v4's import
+syntax is the same whether it's wired through PostCSS or any other build:
 
 ```css
 @import 'tailwindcss';
@@ -530,9 +518,8 @@ plugin or PostCSS:
 
 ## The four touch-points (App Router setup)
 
-`vite-app` has five touch-points split across `index.html` and `main.tsx`.
-Next collapses the document entry point into `layout.tsx`, so this becomes
-four:
+Next collapses the document entry point into `layout.tsx`, so the setup lands
+in four touch-points:
 
 1. **`src/styles/`** — copy all four files verbatim (with the `tokens.css`
    font-variable adaptation above).
@@ -541,17 +528,16 @@ four:
 3. **Fonts via `next/font/google` in `layout.tsx`** — self-hosted, no CDN
    `<link>` tags, no preconnects to manage. See `shell.md`.
 4. **`data-theme="dark"` + `suppressHydrationWarning` on `<html>`, plus
-   `<ThemeInit />`** — see below. This replaces `vite-app`'s inline pre-paint
-   `<script>`.
+   `<ThemeInit />`** — see below.
 
 ## Theme: `ThemeInit` + `ThemeToggle`
 
-`vite-app` gets a zero-flash theme by running an inline `<script>` in
-`<head>` *before* React ever mounts — a trick that only works because it's a
-plain SPA with one static `index.html`. Next's root layout is
-server-rendered, so there's no equivalent blocking-script slot that also
-covers client-side navigations between routes. The proven reference app
-instead uses a client component that corrects `data-theme` on every mount:
+A zero-flash theme is classically done by running an inline `<script>` in
+`<head>` *before* React ever mounts — but that trick only works in a plain
+SPA with one static `index.html`. Next's root layout is server-rendered, so
+there's no equivalent blocking-script slot that also covers client-side
+navigations between routes. The proven reference app instead uses a client
+component that corrects `data-theme` on every mount:
 
 `src/components/theme-init.tsx`:
 
@@ -581,16 +567,16 @@ export function ThemeInit() {
 **Known trade-off, not yet fixed:** because the server always renders
 `data-theme="dark"` first, a visitor whose stored preference is `light` can
 see one frame of dark before `ThemeInit`'s effect corrects it after
-hydration — unlike `vite-app`, where the pre-paint script runs before the
-browser paints anything at all. This is the accepted v1 shape, ported as-is
-from the proven reference rather than inventing an untested fix. If this
-flash is visible enough in practice to bother, the fix is a blocking inline
-`<script>` in `layout.tsx` via `dangerouslySetInnerHTML` (the same technique
-`vite-app` uses, just moved from `index.html` into the layout's `<body>`) —
-flag it as friction and it can be added then.
+hydration — the effect runs after hydration, not before the browser's first
+paint. This is the accepted v1 shape, ported as-is from the proven reference
+rather than inventing an untested fix. If this flash is visible enough in
+practice to bother, the fix is a blocking inline `<script>` in `layout.tsx`
+via `dangerouslySetInnerHTML` (running the theme-init logic before first
+paint, from the layout's `<body>`) — flag it as friction and it can be added
+then.
 
-`src/components/theme-toggle.tsx` — same behavior as `vite-app`'s, plus the
-`'use client'` directive App Router requires for anything with interactivity:
+`src/components/theme-toggle.tsx` — plus the `'use client'` directive App
+Router requires for anything with interactivity:
 
 ```tsx
 'use client'
@@ -621,13 +607,12 @@ export function ThemeToggle() {
 }
 ```
 
-Both are rendered once, in `layout.tsx` (see `shell.md`) — the App Router
-equivalent of `vite-app` rendering `<ThemeToggle />` in `__root.tsx`.
+Both are rendered once, in `layout.tsx` (see `shell.md`) — the App Router's
+single shared shell for every route.
 
 ## The home page
 
-`src/app/page.tsx` — minimal centered placeholder, same shape as `vite-app`'s
-`home.tsx`:
+`src/app/page.tsx` — minimal centered placeholder:
 
 ```tsx
 import Link from 'next/link'
@@ -648,11 +633,11 @@ export default function HomePage() {
 }
 ```
 
-Uses `next/link`, not a plain `<a>` — unlike `vite-app`'s home page. See
-`docs.md`: `eslint-config-next`'s `no-html-link-for-pages` rule flags a
-plain anchor elsewhere in this skill (the docs sidebar's link back to `/`),
-so both internal links here use `next/link` consistently rather than
-leaning on that rule's inconsistent detection.
+Uses `next/link`, not a plain `<a>`. See `docs.md`: `eslint-config-next`'s
+`no-html-link-for-pages` rule flags a plain anchor elsewhere in this skill
+(the docs sidebar's link back to `/`), so both internal links here use
+`next/link` consistently rather than leaning on that rule's inconsistent
+detection.
 
 ## The one rule
 
