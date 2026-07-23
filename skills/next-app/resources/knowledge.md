@@ -1,15 +1,9 @@
 # Part: knowledge
 
-> **Note.** This file compares against `vite-app`, a Vite + TanStack Router
-> shell that has since been deleted. Those comparisons are kept because the
-> *reasoning* still explains why each choice was made — but the referent is
-> history, not something you can go read. Next.js is the only shell now.
-
-Same two things as `vite-app`: the `knowledge/` folder (plain markdown files
-that encode domain taste) and the `src/features/` seam pattern (the
-structural skeleton that separates mechanism from knowledge and keeps
-features from tangling). Identical in spirit; the loader mechanism changes
-because there's no bundler-level glob in Next.
+Two things: the `knowledge/` folder (plain markdown files that encode domain
+taste) and the `src/features/` seam pattern (the structural skeleton that
+separates mechanism from knowledge and keeps features from tangling). The loader
+reads files with Node's `fs`, since there's no bundler-level glob in Next.
 
 ## The `knowledge/` folder
 
@@ -31,10 +25,9 @@ Files are app-specific, but the pattern is consistent:
 
 ### How knowledge is loaded
 
-`vite-app`'s loader is ~15 lines built on `import.meta.glob`, a Vite-only
-build-time API. Next has no equivalent, so this reads the file directly with
-Node's `fs` instead — same public shape (`getKnowledge(name)` returns a
-string), different mechanism:
+A bundler-level API like `import.meta.glob` is build-time and has no Next
+equivalent, so this reads the file directly with Node's `fs` instead. The public
+shape is a one-liner — `getKnowledge(name)` returns a string:
 
 ```ts
 import { readFileSync } from 'node:fs'
@@ -70,13 +63,13 @@ Knowledge files are plain markdown. A non-coder (or a non-programmer agent
 run) can open `knowledge/rubric.md`, read it, and update it to change the
 app's behavior without touching code. The mechanism stays in code; the taste
 stays here. This is the knowledge-as-extension-surface bet — it's what makes
-the app tunable. Unchanged from `vite-app`.
+the app tunable.
 
 ## The `src/features/` seam pattern
 
-Identical to `vite-app`. Each feature gets its own folder under
-`src/features/`. Nothing is placed directly in `src/` except the App Router
-tree (`src/app/`), styles, app-meta, and shared utilities.
+Each feature gets its own folder under `src/features/`. Nothing is placed
+directly in `src/` except the App Router tree (`src/app/`), styles, app-meta,
+and shared utilities.
 
 ### Folder structure
 
@@ -88,9 +81,10 @@ src/features/
     index.ts       public API of the feature (if it has one)
 ```
 
-Start with just `CLAUDE.md`. Add `types.ts` when the contracts are clear. Add
-implementation files as phases complete. Keep the folder thin until there's
-real work to do.
+Start thin — a `CLAUDE.md` where the folder is a real boundary (see below),
+nothing if it isn't yet. Add `types.ts` when the contracts are clear, and
+implementation files as work lands. Keep the folder thin until there's real work
+to do.
 
 ### What features to create
 
@@ -112,15 +106,25 @@ One folder per domain concern. Common set for a BYO-key, single-user utility:
 
 ### `CLAUDE.md` per feature
 
-Every feature folder gets a `CLAUDE.md`. It describes:
-- What this feature owns (its responsibility boundary)
-- What it does NOT own (where adjacent features take over)
-- Key design decisions (e.g. "records not React state", "thin orchestrator",
-  "server-only, never imported by a Client Component")
-- Where to read more (usually `docs/PLAN.md`)
+A feature folder gets a `CLAUDE.md` **only where it's a boundary you could
+violate without reading it** — an invariant, an ownership rule, a dependency
+direction, a "don't do X here." This is the standard's test, and a missing one
+is correct when there's nothing non-obvious to say: an empty seam earns no
+`CLAUDE.md`. `knowledge` earns one (its server-only boundary fails silently if
+crossed); an empty `core` does not, until it owns something.
 
-This is the primary orientation doc for an agent starting work on that
-feature. Keep it short — a page or less.
+Where one is warranted, it describes:
+- What this feature owns (its responsibility boundary)
+- What it does NOT own (where adjacent features take over) — name who owns
+  each not-owned thing instead
+- Invariants that fail silently if broken, and decisions worth not
+  relitigating, with the *why* (e.g. "records not React state", "thin
+  orchestrator", "server-only, never imported by a Client Component")
+
+Not a file inventory, not a restatement of the global rules. Keep it short — it's
+re-read every time an agent touches the folder, so length tracks the boundary's
+complexity. For orientation on what to build next, an agent reads the README
+`## Status` block and open issues, not a plan file.
 
 ### `types.ts` per feature
 

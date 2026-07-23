@@ -1,36 +1,29 @@
 # Part: shell
 
-> **Note.** This file compares against `vite-app`, a Vite + TanStack Router
-> shell that has since been deleted. Those comparisons are kept because the
-> *reasoning* still explains why each choice was made — but the referent is
-> history, not something you can go read. Next.js is the only shell now.
-
-The base scaffold every server-capable app starts from. Next.js App Router
-instead of Vite — same conventions, project shape, and Vercel deploy target as
-`vite-app`, adapted to a framework that type-checks and can host real
-server-side compute. No app logic — just the runnable skeleton with correct
-configuration.
+The base scaffold every server-capable app starts from. Next.js App Router,
+deploying to Vercel — a framework that type-checks the whole project and can
+host real server-side compute. No app logic — just the runnable skeleton with
+correct configuration.
 
 ## Stack
 
 - **Runtime:** Node.js / pnpm (not npm)
 - **Framework:** Next.js 16, App Router
 - **Language:** TypeScript (strict)
-- **Styles:** Tailwind CSS v4 (via `@tailwindcss/postcss` — PostCSS, not a Vite
-  plugin)
+- **Styles:** Tailwind CSS v4 (via `@tailwindcss/postcss` — runs through
+  PostCSS)
 - **Testing:** Vitest + React Testing Library
 - **Linting:** ESLint (flat config, `eslint-config-next`)
 - **Formatting:** Prettier
 - **Deploy target:** Vercel (Next native — server-rendered, not static)
 
-## Why this exists (not just a Vite reskin)
+## Why this exists
 
-`vite-app` produces a client-only SPA — no story for server-side compute,
-secrets, or real per-user auth. That gap was confirmed empirically: a live
-app (`effective`) started on `vite-app`, hit a hard wall (Vite's dev/build
-split can't host a Vercel serverless function reliably — `vercel dev` imports
-raw `.ts` while `vercel build` transpiles per-file), and migrated to Next.js
-mid-build. Everything framework-agnostic (the Paper & Ink styles, the
+Next.js App Router is the shell because it hosts server-side compute, secrets,
+and real per-user auth natively — a client-only SPA has no reliable story for
+any of those. That requirement was confirmed empirically: a live app
+(`effective`) hit a hard wall on a client-only SPA framework and migrated to
+Next.js mid-build. Everything framework-agnostic (the Paper & Ink styles, the
 `knowledge/` folder, the `src/features/` seam) ported straight across; only
 the shell needed replacing. This skill is that shell, drafted directly from
 what's now proven in that migration.
@@ -71,15 +64,14 @@ the action error out. The two settings must move together.
 }
 ```
 
-Unlike `vite-app`, **`build` does NOT need a `tsc --noEmit &&` prefix** —
-`next build` type-checks the whole project natively as part of the build.
-Vite's build only checks that `src/routeTree.gen.ts` exists; Next's doesn't
-have that gap.
+**`build` does NOT need a `tsc --noEmit &&` prefix** — `next build`
+type-checks the whole project natively as part of the build, so there's no
+separate type-check step to run.
 
 Install dependencies with `pnpm add` — never hand-write the `dependencies`/
-`devDependencies` blocks (the same lesson `vite-app` learned the hard way: a
-hand-picked version pin turned out type-incompatible with what everything
-else resolved to). Let `pnpm add` resolve everything together:
+`devDependencies` blocks. A hand-picked version pin can turn out
+type-incompatible with what everything else resolves to; let `pnpm add`
+resolve everything together:
 
 ```
 pnpm add next react react-dom lucide-react server-only
@@ -93,7 +85,7 @@ fails the build loudly if one is ever pulled into a client bundle by mistake,
 instead of silently shipping `node:fs` to the browser. `jsdom` must be
 installed explicitly; vitest's `environment: 'jsdom'` setting doesn't pull it
 in on its own. `react-markdown`/`remark-gfm` are added later, in the Docs
-step — same sequencing as `vite-app`.
+step, not here.
 
 **`typescript@^5` and `eslint@^9` are real, confirmed pins, not hand-picked
 guesses** — the two exceptions to "let `pnpm add` resolve everything together."
@@ -134,7 +126,7 @@ export default nextConfig
 
 ### `postcss.config.mjs`
 
-Tailwind v4 runs through PostCSS here, not a Vite plugin:
+Tailwind v4 runs through PostCSS here:
 
 ```js
 const config = {
@@ -173,8 +165,8 @@ flat-config helper API) — no extra dependency beyond `eslint`.
 
 ### `tsconfig.json`
 
-Strict mode on, plus `noUncheckedIndexedAccess: true` for the same reason
-`vite-app` sets it — same alias convention too (`#/*` → `src/*`). Next's own
+Strict mode on, plus `noUncheckedIndexedAccess: true` to catch unguarded
+index access, and the alias convention `#/*` → `src/*`. Next's own
 shape requires the `next` TS plugin and both type-output directories in
 `include` — Next 16 generates dev-mode route types under `.next/dev/types/`
 in addition to the older `.next/types/` build path, and omitting either
@@ -215,7 +207,7 @@ causes spurious type errors depending on whether you last ran `dev` or
 
 ### `vitest.config.ts`
 
-Same alias, same `passWithNoTests` reasoning as `vite-app` — a fresh scaffold
+Same `#` → `src` alias, plus `passWithNoTests: true` — a fresh scaffold
 has no test files yet and `pnpm test` must still exit 0. Two Next-specific
 additions: excluding `.next/` from vitest's file scan (Next's build output
 would otherwise get walked looking for test files), and stubbing `server-only`
@@ -271,8 +263,8 @@ export {}
 
 ### `src/app-meta.ts`
 
-Same contract as `vite-app`'s — one small file naming the app, reused by the
-layout's `<title>`, the home page, and the docs viewer's sidebar header:
+One small file naming the app, reused by the layout's `<title>`, the home
+page, and the docs viewer's sidebar header:
 
 ```ts
 export type AppMeta = { name: string; tagline: string; repo: string }
@@ -286,8 +278,8 @@ export const appMeta: AppMeta = {
 
 ### `src/app/layout.tsx`
 
-Root layout replaces `index.html` + `main.tsx` + `__root.tsx` all at once —
-there's no separate document entry point in App Router. Fonts are
+The root layout is the single document entry point in App Router — there's no
+separate HTML shell or client bootstrap file. Fonts are
 self-hosted via `next/font/google` (no `<link>` tags, no Google Fonts CDN
 round-trip) and exposed as CSS variables that `tokens.css` reads:
 
@@ -345,8 +337,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 `data-theme="dark"` is the static default (matches the proven reference
 app); `suppressHydrationWarning` on `<html>` is required because `ThemeInit`
 corrects that attribute client-side and React would otherwise flag the
-mismatch. See `styles.md` for why this isn't a zero-flash pre-paint script
-the way `vite-app`'s `index.html` is, and what that trade-off costs.
+mismatch. See `styles.md` for why this isn't a zero-flash pre-paint script,
+and what that trade-off costs.
 
 ### `pnpm-workspace.yaml`
 
@@ -434,8 +426,8 @@ next-env.d.ts
 
 - `pnpm install` runs clean
 - `pnpm dev` serves the app on the chosen port
-- `pnpm build` succeeds — this is also the full type-check, unlike `vite-app`
-  where `tsc` is a separate prefix step
+- `pnpm build` succeeds — this is also the full type-check, with no separate
+  `tsc` prefix step
 - `pnpm test` exits 0 (no test files is fine — `passWithNoTests: true` is set)
 - `pnpm lint` passes
 - `rm -rf node_modules && pnpm install` still runs clean — the check that

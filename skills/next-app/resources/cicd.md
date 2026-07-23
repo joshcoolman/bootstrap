@@ -1,11 +1,6 @@
 # Part: CI/CD
 
-> **Note.** This file compares against `vite-app`, a Vite + TanStack Router
-> shell that has since been deleted. Those comparisons are kept because the
-> *reasoning* still explains why each choice was made — but the referent is
-> history, not something you can go read. Next.js is the only shell now.
-
-Same three tools as `vite-app`, same division of labor, no overlap:
+Three tools, one division of labor, no overlap:
 
 - **Vercel** — native Git integration for deploys and previews
 - **GitHub Actions** — lint + test + build quality gate
@@ -15,11 +10,10 @@ Same three tools as `vite-app`, same division of labor, no overlap:
 
 Use Vercel's native Git integration — connect the repo in the Vercel
 dashboard and it handles the rest. Preview deployments on every PR,
-production on push to `main`. No `vercel.json` needed. This matters more
-here than it did for `vite-app`: the whole reason this skill exists is to
-host real server-side compute (API routes, server actions), and Vercel's
-native Next.js integration is what makes that work reliably — the exact gap
-that made a plain Vite SPA insufficient in the first place.
+production on push to `main`. No `vercel.json` needed. This matters because
+the whole reason this skill exists is to host real server-side compute (API
+routes, server actions), and Vercel's native Next.js integration is what
+makes that work reliably.
 
 Do NOT use the Vercel CLI + GitHub Actions approach unless you have a
 specific reason (custom pre-deploy steps, GitHub Enterprise). The native
@@ -70,9 +64,9 @@ jobs:
 ```
 
 `pnpm build` runs `next build`, which type-checks the whole project natively
-— lint + test + build together are the complete quality signal, same as
-`vite-app`, and it must stay green with **zero secrets and zero env vars**
-for a bare scaffold with no backend wired up yet.
+— lint + test + build together are the complete quality signal, and it must
+stay green with **zero secrets and zero env vars** for a bare scaffold with
+no backend wired up yet.
 
 **`pnpm/action-setup` deliberately has no `version:`.** `package.json`'s
 `packageManager` field pins pnpm (see `shell.md`), and `pnpm/action-setup@v4`

@@ -1,26 +1,25 @@
 # Part: docs
 
-> **Note.** This file compares against `vite-app`, a Vite + TanStack Router
-> shell that has since been deleted. Those comparisons are kept because the
-> *reasoning* still explains why each choice was made — but the referent is
-> history, not something you can go read. Next.js is the only shell now.
+The docs folder structure plus the in-app `/docs` viewer. The markdown files
+are the human/agent-readable record of intent, and the viewer makes them
+reachable without leaving the app.
 
-The docs folder structure plus the in-app `/docs` viewer. Same idea as
-`vite-app`: the markdown files are the human/agent-readable record of intent,
-and the viewer makes them reachable without leaving the app.
-
-**This file is the one genuinely new, unvalidated piece of `next-app`.**
-`vite-app`'s docs viewer leans on Vite's `import.meta.glob`, a bundler-level
-API with no Next.js equivalent — the proven reference app hit this exact gap
-during its migration and simply dropped the `/docs` route rather than solve
-it. What follows is a first design, not a ported-and-confirmed one. If it
-breaks or feels wrong in actual use, that's expected — report it as friction
-rather than assuming it's a mistake in reading these instructions.
+**This file is the one genuinely new, unvalidated piece of `next-app`.** The
+natural approach — a bundler-level glob like `import.meta.glob` that reads and
+bundles the files in one call at build time — has no Next.js equivalent; the
+proven reference app hit this exact gap during its migration and simply dropped
+the `/docs` route rather than solve it. What follows is a first design, not a
+ported-and-confirmed one. If it breaks or feels wrong in actual use, that's
+expected — report it as friction rather than assuming it's a mistake in reading
+these instructions.
 
 ## The `docs/` folder
 
-Same four standard files as `vite-app`, same purpose, written before
-significant code lands:
+The standard files, written before significant code lands. One shift to note:
+**`PLAN.md` is gone**, replaced by `CODE-STANDARDS.md`. The project standard is
+explicit that plans, tasks, and bugs are GitHub issues, never a markdown file in
+`docs/` — so the scaffold no longer writes one. Build order and "what's next"
+live in the README `## Status` block and in issues.
 
 ### `docs/OVERVIEW.md`
 
@@ -34,22 +33,85 @@ The what and why of this specific app. The welded boundary (what it does and
 what it deliberately does not do), the key design decisions. Readable by a
 non-coder.
 
-### `docs/PLAN.md`
+### `docs/CODE-STANDARDS.md`
 
-The concrete build order. Each phase has a clear output ("after this phase, X
-is runnable"). Updated as phases complete. The primary orientation doc for
-agents starting work.
+The repo's own copy of the project standard — the file the standard tells every
+repo to state ("A repo states its own copy in `docs/CODE-STANDARDS.md`,
+following this"). It is what wires a freshly-scaffolded app to the conventions
+it's supposed to follow, so an agent picking up the repo reads *this* rather
+than a URL to an external standard. Keep it short — it restates the load-bearing
+rules for *this* app, not the whole standard verbatim.
+
+Write it with this content, adapted to the app's alias and name:
+
+```markdown
+# Code standards
+
+This repo follows the project standard. The load-bearing rules:
+
+## The `app/` folder
+
+- `name/` is a route (`page.tsx`); `_name/` is supporting code Next ignores
+  as a URL (`_actions/ _queries/ _components/ _providers/`); `(name)/` groups
+  without adding to the path.
+- Every route is the same shape: `page.tsx` · `_queries/` (reads) ·
+  `_actions/` (writes) · `_components/` (renders).
+- Concerns are folders, never a bare file: `_actions/x.ts`, not `_actions.ts`.
+- No `index.ts` barrels inside `app/` — import the named file.
+- Name by subject; don't repeat the parent (`activity/_components/counter.tsx`,
+  not `activity-counter.tsx`).
+- kebab-case; import alias `#/` → `src/`. `src/features/` holds domain code
+  shared beyond one route.
+
+## Components
+
+Order of search when a view needs a component:
+
+1. Shop the shelf — build from `src/components/` if you can.
+2. A gap the shelf can't fill — build the primitive and promote it once a
+   second route needs it.
+3. Hand-build only for a true outlier.
+
+Where a component lives — litmus: does it import `#/features`?
+
+- **Primitive** → `src/components/` (no `#/features`, no `next/*`; stack-portable).
+- **App-shared** → `app/_components/` (imports `#/features`, used by 2+ routes).
+- **Route-local** → that route's `_components/`.
+
+Build on need — no speculative primitives; the bar to promote is a real second
+use, not "might be shared."
+
+## Styling
+
+This app styles with Tailwind + the Paper & Ink design system (`docs/STYLE.md`,
+`src/styles/`). The rule that carries over from the standard: **values reference
+tokens, never a raw color or number** — domain UI uses the semantic token
+classes (`bg-surface`, `text-text-muted`), and dark mode comes free from the
+token remap. Keep one visual language.
+
+## docs & issues
+
+- Root-level `docs/` holds what the project is and why: `OVERVIEW.md`,
+  `SPEC.md`, and `reference/` for notes. Plans, tasks, and bugs are **GitHub
+  issues**, never files in `docs/`.
+- Orientation = the README `## Status` block + open issues. No plan files.
+
+## CLAUDE.md
+
+Write a subfolder `CLAUDE.md` only where the folder is a boundary you could
+violate without reading it (an invariant, an ownership rule, a dependency
+direction). A missing one is correct when there's nothing non-obvious to say.
+```
 
 ### `docs/STYLE.md`
 
-The style system contract — same content as `vite-app`'s, adapted to name
-this skill's four touch-points (`shell.md`) instead of the Vite SPA's five.
+The style system contract, naming this skill's four style touch-points
+(`shell.md`).
 
 ## The in-app `/docs` viewer
 
 A `/docs` route rendering all markdown from `docs/`, `knowledge/`,
-`README.md`, and `CLAUDE.md` in a sidebar-nav reader — same feature set as
-`vite-app`'s, different mechanism underneath.
+`README.md`, and `CLAUDE.md` in a sidebar-nav reader.
 
 ### Dependencies
 
@@ -60,10 +122,10 @@ remark-gfm
 
 ### Why the split: a Server Component reading files, a Client Component rendering them
 
-`import.meta.glob` did two jobs at once in `vite-app`: it read the files
-*and* bundled them in, eagerly, at build time. Next has no single API that
-does both. The replacement splits those jobs across the Server/Client
-boundary App Router already has:
+A bundler-level glob like `import.meta.glob` does two jobs at once: it reads
+the files *and* bundles them in, eagerly, at build time. Next has no single API
+that does both. The split divides those jobs across the Server/Client boundary
+App Router already has:
 
 - A **Server Component** (`src/app/docs/page.tsx`) reads the files with
   Node's `fs` — this only runs on the server (build time for a static route
@@ -76,9 +138,8 @@ boundary App Router already has:
   nav, active-doc state, mobile drawer.
 
 The classification logic (turning a file path into a title/section/order) is
-identical in spirit to `vite-app`'s — it's pulled out into its own pure,
-framework-agnostic function so it doesn't care whether the raw content came
-from a Vite glob or a Node `fs` read.
+pulled out into its own pure, framework-agnostic function so it doesn't care
+whether the raw content came from a build-time glob or a Node `fs` read.
 
 ### `src/features/docs/build-docs.ts`
 
@@ -135,11 +196,10 @@ export function groupBySection(docs: Doc[]): { section: string; docs: Doc[] }[] 
 }
 ```
 
-Byte-for-byte the same classification rules as `vite-app`'s docs route
-(`/knowledge/` → "Knowledge", `/CLAUDE.md` → "Working notes", `/README.md`
-and `/docs/` → "Start here", optional `NN-` filename prefix for manual
-ordering) — only the input shape changed, from a glob result to a plain
-`Record<string, string>`.
+The classification rules (`/knowledge/` → "Knowledge", `/CLAUDE.md` → "Working
+notes", `/README.md` and `/docs/` → "Start here", optional `NN-` filename prefix
+for manual ordering) operate on a plain `Record<string, string>` — a shape any
+file source can produce.
 
 ### `src/app/docs/page.tsx`
 
@@ -187,13 +247,12 @@ export default function DocsPage() {
 No `'use client'` here — this is a Server Component by default, which is
 exactly what lets it call `node:fs` directly. Nothing here is
 request-dependent, so Next renders it once at build time like any other
-static route — the docs shown are whatever was in the repo at build time,
-same as `vite-app`'s build-time glob.
+static route — the docs shown are whatever was in the repo at build time.
 
 ### `src/components/docs-viewer.tsx`
 
-Owns all interactivity — same layout, same behavior as `vite-app`'s
-`DocsPage`, just fed `docs` as a prop instead of computing them from a glob:
+Owns all interactivity, fed `docs` as a prop instead of computing them from a
+glob:
 
 ```tsx
 'use client'
@@ -329,14 +388,14 @@ export function DocsViewer({ docs }: { docs: Doc[] }) {
 }
 ```
 
-**Uses `next/link`, unlike `vite-app`'s plain `<a>` convention** —
-confirmed live: `eslint-config-next`'s `@next/next/no-html-link-for-pages`
-rule flags a plain anchor to `/` here (though, curiously, not the home
-page's plain anchor to `/docs` in `styles.md` — the rule's detection is
-asymmetric depending on which file the anchor lives in). Rather than lean on
-that asymmetry, both internal links in this skill use `next/link` — it's
-also just the correct idiom for internal navigation in Next, enabling
-client-side transitions instead of a full page reload.
+**Uses `next/link` for internal navigation** — confirmed live:
+`eslint-config-next`'s `@next/next/no-html-link-for-pages` rule flags a plain
+anchor to `/` here (though, curiously, not the home page's plain anchor to
+`/docs` in `styles.md` — the rule's detection is asymmetric depending on which
+file the anchor lives in). Rather than lean on that asymmetry, both internal
+links in this skill use `next/link` — it's also just the correct idiom for
+internal navigation in Next, enabling client-side transitions instead of a full
+page reload.
 
 **The hash-sync logic uses `useSyncExternalStore`.** Both of the obvious
 approaches are wrong, and this skill shipped each of them in turn before

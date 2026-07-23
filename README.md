@@ -106,7 +106,19 @@ want, fork it and fix it.
 
 ## Status
 
-**Last shipped:** a hard narrowing, and a fresh start. bootstrap went from five
+**Last shipped (v2.1.0):** `next-app` aligned to
+[`project-standard`](https://github.com/joshcoolman/project-standard). The
+scaffold now writes `docs/CODE-STANDARDS.md` (the repo's own copy of the
+standard) instead of `docs/PLAN.md` — plans are GitHub issues, never a doc; it
+seeds the README `## Status` block; and the per-feature `CLAUDE.md` rule relaxed
+to the standard's boundary test (write one only where a folder is a boundary you
+could violate without reading it). Separately, every dead `vite-app` comparison
+was stripped from the `next-app` resources (issue #12) — the reasoning kept, the
+contrast to a deleted shell dropped. One open decision deferred: the standard's
+Base UI + `*.module.css` styling vs. the validated Tailwind/Paper & Ink system —
+`CODE-STANDARDS.md` states the real stack (Tailwind tokens) for now.
+
+**Earlier:** a hard narrowing, and a fresh start. bootstrap went from five
 skills to two.
 
 - **Next.js only.** `vite-app`, `add-simple-auth`, and the Vite/TanStack
@@ -146,6 +158,15 @@ works. Three fixes came back from it, all now in the skill:
 The pattern in all three: a failure that surfaces as a tool crash or a misleading
 error, never as the thing that is actually wrong.
 
-**Up next:** the storage part and the setup wizard still have not executed —
-`prompt-smith` used neither. Both remain unrun code. The next consumer run that
-needs object storage or a clone-to-live path is their gate.
+**Up next:**
+
+- **Consumer-run the aligned `next-app`** — v2.1.0's changes haven't been
+  driven end-to-end yet. First scaffold from it confirms `CODE-STANDARDS.md`
+  and the seeded `## Status` land right and nothing references `PLAN.md`.
+- **Decide the styling question** — adopt the standard's Base UI + `*.module.css`
+  in `next-app`, or amend the standard to bless Tailwind/Paper & Ink. Open.
+- **File the Vercel/Railway doc fix** — `shell.md` names Vercel as the deploy
+  target while the plugin ships `deploy-next-railway`. Pre-existing; wants an issue.
+- The storage part and the setup wizard still have not executed (`prompt-smith`
+  used neither) — the next run that needs object storage or a clone-to-live path
+  is their gate.
