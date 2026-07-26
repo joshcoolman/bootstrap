@@ -10,9 +10,9 @@ identity moves.
 
 ```
 src/styles/
-  index.css       entry — Tailwind import + partials + the @theme bridge
+  index.css       entry — imports the three partials, nothing else
   tokens.css      the design contract: colors, fonts, scales (light + dark)
-  base.css        html/body styling
+  base.css        L1 — the reset + bare-tag baseline
   typography.css  house-* roles + the .prose reading layer + .compact variant
 ```
 
@@ -22,6 +22,18 @@ src/styles/
 ### `tokens.css`
 
 The color, spacing, radius, type-scale, motion, and border-width contract.
+
+**Every color is `hsl(H S L)` / `hsl(H S L / A)`** — one notation, opaque or
+translucent, per `project-standard`. This file is the reskin-by-eye surface, and
+the edits that actually come up map to channels: drop the saturation, reduce the
+contrast (lightness), take the opacity down 10%. Hex is fine to paste, not to
+nudge — and it can't express the alpha variants at all, which is how a palette
+ends up in two notations.
+
+One relationship the conversion made visible: `--accent-soft` is literally
+`--accent` at 12% (`hsl(17 42% 39%)` both), which the old
+`#8f523a` / `rgba(143, 82, 58, 0.12)` pair hid. Retune the accent and its soft
+variant now has to move with it — in hex they silently drift apart.
 The four `--font-*` stacks reference the CSS variables `next/font/google`
 generates in `layout.tsx` (`--font-ibm-plex-sans`, `--font-martel`,
 `--font-space-mono`) rather than raw Google Fonts family-name strings — the
@@ -45,20 +57,24 @@ or the fade-in animation looks off:
 
 ```css
 :root {
-  --bg: #e9e6df;
-  --surface: #f1efe8;
-  --surface-raised: #f7f5ef;
-  --surface-sunken: rgba(26, 22, 16, 0.045);
-  --text: #1a1a18;
-  --text-body: #26241f;
-  --text-muted: #6a655b;
-  --text-faint: #938d81;
-  --border: #c7c1b4;
-  --border-soft: rgba(26, 22, 16, 0.13);
-  --border-faint: rgba(26, 22, 16, 0.07);
-  --accent: #8f523a;
-  --accent-contrast: #f7f5ef;
-  --accent-soft: rgba(143, 82, 58, 0.12);
+  --bg: hsl(42 19% 89%);
+  --surface: hsl(47 24% 93%);
+  --surface-raised: hsl(45 33% 95%);
+  --surface-sunken: hsl(36 24% 8% / 4.5%);
+  --text: hsl(60 4% 10%);
+  --text-body: hsl(43 10% 14%);
+  --text-muted: hsl(40 8% 39%);
+  --text-faint: hsl(40 8% 54%);
+  --border: hsl(41 15% 74%);
+  --border-soft: hsl(36 24% 8% / 13%);
+  --border-faint: hsl(36 24% 8% / 7%);
+  --accent: hsl(17 42% 39%);
+  --accent-contrast: hsl(45 33% 95%);
+  --accent-soft: hsl(17 42% 39% / 12%);
+
+  /* Overlay scrim. A framework supplies this implicitly (`bg-black/60`); with
+     none, it has to exist as a real token. */
+  --scrim: hsl(0 0% 0% / 60%);
 
   --font-display: var(--font-ibm-plex-sans), system-ui, sans-serif;
   --font-serif-stack: var(--font-martel), Georgia, serif;
@@ -97,20 +113,20 @@ or the fade-in animation looks off:
 }
 
 [data-theme='dark'] {
-  --bg: #14130f;
-  --surface: #1f1d18;
-  --surface-raised: #262320;
-  --surface-sunken: rgba(0, 0, 0, 0.3);
-  --text: #ece7dd;
-  --text-body: #d7d1c5;
-  --text-muted: #9c958a;
-  --text-faint: #6e685e;
-  --border: #38342d;
-  --border-soft: rgba(255, 255, 255, 0.12);
-  --border-faint: rgba(255, 255, 255, 0.07);
-  --accent: #c67e5e;
-  --accent-contrast: #14130f;
-  --accent-soft: rgba(198, 126, 94, 0.16);
+  --bg: hsl(48 14% 7%);
+  --surface: hsl(43 13% 11%);
+  --surface-raised: hsl(30 9% 14%);
+  --surface-sunken: hsl(0 0% 0% / 30%);
+  --text: hsl(40 28% 90%);
+  --text-body: hsl(40 18% 81%);
+  --text-muted: hsl(37 8% 58%);
+  --text-faint: hsl(37 8% 40%);
+  --border: hsl(38 11% 20%);
+  --border-soft: hsl(0 0% 100% / 12%);
+  --border-faint: hsl(0 0% 100% / 7%);
+  --accent: hsl(18 48% 57%);
+  --accent-contrast: hsl(48 14% 7%);
+  --accent-soft: hsl(18 48% 57% / 16%);
 }
 ```
 
@@ -121,13 +137,58 @@ element to include:
 
 ```css
 /* ════════════════════════════════════════════════════════════════════════════
-   base.css — base element styling (html / body).
+   base.css — L1: the reset + a bare-tag baseline.
 
-   Deliberately minimal. NOTE: there is no `* { margin:0; padding:0 }` reset —
-   Tailwind v4's Preflight already does that inside `@layer base`. An UNLAYERED
-   copy here would override every margin/padding utility (mx-auto, px-*, pt-*, …)
-   because unlayered CSS beats any @layer, so it must not exist.
+   L1 OWNS THE RESET. With no framework there is no Preflight, so if this block
+   is removed the app inherits every UA default (body margin, list bullets,
+   inline-image baseline gap, unstyled form controls). That is the single
+   load-bearing consequence of dropping the framework — it fails as "everything
+   is slightly wrong," not as an error.
    ════════════════════════════════════════════════════════════════════════════ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+ul[role='list'],
+ol[role='list'] {
+  list-style: none;
+  padding: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
 
 html {
   background: var(--bg);
@@ -185,9 +246,8 @@ The full block is inlined below so this skill is self-contained:
                          reference docs (the /docs viewer).
 
    All sizing/weight/family comes from the tokens (display = IBM Plex Sans,
-   body = Martel serif, mono = Space Mono). This is plain CSS, not the Tailwind
-   typography plugin — it is the single source of truth for reading type, so it
-   can be ported or restyled without depending on a plugin.
+   body = Martel serif, mono = Space Mono). Plain CSS and the single source of
+   truth for reading type, so it ports or restyles with no plugin involved.
    ════════════════════════════════════════════════════════════════════════════ */
 
 /* ── House typographic roles (page-chrome) ───────────────────────────────── */
@@ -482,38 +542,26 @@ The full block is inlined below so this skill is self-contained:
 
 ### `index.css`
 
-The import order and `@theme inline` mapping below — Tailwind v4's import
-syntax is the same whether it's wired through PostCSS or any other build:
+Just the import order — the tokens are consumed directly as `var(--…)`, so
+there is no bridge layer and no framework import:
 
 ```css
-@import 'tailwindcss';
 @import './tokens.css';
 @import './base.css';
 @import './typography.css';
+```
 
-@custom-variant dark ([data-theme='dark'] &);
+That is the entire file. If it ever grows a `@theme`, a `@custom-variant`, or a
+framework import, something has been reintroduced that this stack removed on
+purpose.
 
-@theme inline {
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-raised: var(--surface-raised);
-  --color-surface-sunken: var(--surface-sunken);
-  --color-text: var(--text);
-  --color-text-body: var(--text-body);
-  --color-text-muted: var(--text-muted);
-  --color-text-faint: var(--text-faint);
-  --color-border: var(--border);
-  --color-border-soft: var(--border-soft);
-  --color-border-faint: var(--border-faint);
-  --color-accent: var(--accent);
-  --color-accent-contrast: var(--accent-contrast);
-  --color-accent-soft: var(--accent-soft);
+**Dark mode needs no variant machinery.** `tokens.css` remaps under
+`:root[data-theme='dark']`, so every `var(--…)` follows automatically. A
+component that needs a *structural* dark-mode difference (not just a color)
+writes it in its own module:
 
-  --font-sans: var(--font-body);
-  --font-serif: var(--font-serif-stack);
-  --font-display: var(--font-display);
-  --font-mono: var(--font-mono);
-}
+```css
+:global([data-theme='dark']) .icon { display: none; }
 ```
 
 ## The four touch-points (App Router setup)
@@ -523,8 +571,8 @@ in four touch-points:
 
 1. **`src/styles/`** — copy all four files verbatim (with the `tokens.css`
    font-variable adaptation above).
-2. **Import in `layout.tsx`** — `import '#/styles/index.css'`. This is what
-   makes Tailwind process utilities. See `shell.md`.
+2. **Import in `layout.tsx`** — `import '#/styles/index.css'`. The single
+   global stylesheet; every other style is a co-located module. See `shell.md`.
 3. **Fonts via `next/font/google` in `layout.tsx`** — self-hosted, no CDN
    `<link>` tags, no preconnects to manage. See `shell.md`.
 4. **`data-theme="dark"` + `suppressHydrationWarning` on `<html>`, plus
@@ -539,7 +587,9 @@ there's no equivalent blocking-script slot that also covers client-side
 navigations between routes. The proven reference app instead uses a client
 component that corrects `data-theme` on every mount:
 
-`src/components/theme-init.tsx`:
+`src/components/theme-init/theme-init.tsx` — one folder per component, every
+component, no exceptions (`project-standard`). `theme-init` has no styling of its
+own, so it is the one case with no paired `.module.css`:
 
 ```tsx
 'use client'
@@ -575,13 +625,14 @@ via `dangerouslySetInnerHTML` (running the theme-init logic before first
 paint, from the layout's `<body>`) — flag it as friction and it can be added
 then.
 
-`src/components/theme-toggle.tsx` — plus the `'use client'` directive App
-Router requires for anything with interactivity:
+`src/components/theme-toggle/theme-toggle.tsx` — plus the `'use client'`
+directive App Router requires for anything with interactivity:
 
 ```tsx
 'use client'
 
 import { Moon, Sun } from 'lucide-react'
+import styles from './theme-toggle.module.css'
 
 export function ThemeToggle() {
   function toggle() {
@@ -598,17 +649,70 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label="Toggle light or dark theme"
-      className="border-border bg-surface text-text-muted hover:text-text fixed top-5 right-5 z-40 inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors"
+      className={styles.toggle}
     >
-      <Moon size={16} className="dark:hidden" />
-      <Sun size={16} className="hidden dark:block" />
+      <Moon size={16} className={styles.moon} />
+      <Sun size={16} className={styles.sun} />
     </button>
   )
 }
 ```
 
+`src/components/theme-toggle/theme-toggle.module.css` — the template for
+styling a primitive: every value a token, and the dark-mode difference expressed
+with `:global([data-theme='dark'])` rather than a framework variant.
+
+```css
+.toggle {
+  position: fixed;
+  top: var(--space-5);
+  right: var(--space-5);
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  transition: color var(--dur-base) var(--ease);
+}
+
+.toggle:hover {
+  color: var(--text);
+}
+
+/* One icon shows per theme. Light shows the moon (what you'd switch to). */
+.sun {
+  display: none;
+}
+
+:global([data-theme='dark']) .moon {
+  display: none;
+}
+
+:global([data-theme='dark']) .sun {
+  display: block;
+}
+```
+
 Both are rendered once, in `layout.tsx` (see `shell.md`) — the App Router's
 single shared shell for every route.
+
+### `src/components/index.ts` — the one barrel
+
+`src/components/` is a library, so it gets a single root barrel and the folders
+below carry no `index.ts` of their own:
+
+```ts
+export * from './theme-init/theme-init'
+export * from './theme-toggle/theme-toggle'
+```
+
+Consumers import `#/components`. App-internal folders (`app/_components/`, a
+route's own `_components/`) get **no** barrel at all — import the named file.
 
 ## The home page
 
@@ -617,19 +721,52 @@ single shared shell for every route.
 ```tsx
 import Link from 'next/link'
 import { appMeta } from '#/app-meta'
+import styles from './page.module.css'
 
 export default function HomePage() {
   return (
-    <main className="bg-bg text-text flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+    <main className={styles.main}>
       <h1 className="house-section">{appMeta.name}</h1>
-      <Link
-        href="/docs"
-        className="text-accent font-mono text-xs underline decoration-[var(--accent-soft)] underline-offset-4 transition-colors hover:decoration-[var(--accent)]"
-      >
+      <Link href="/docs" className={styles.link}>
         read the plan →
       </Link>
     </main>
   )
+}
+```
+
+`house-section` stays a bare global class — it is an L1 typography *role* from
+`typography.css`, not a utility. Roles are the one thing components reference by
+name rather than restyling.
+
+`src/app/page.module.css`:
+
+```css
+.main {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding-inline: var(--space-6);
+  text-align: center;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.link {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-decoration: underline;
+  text-decoration-color: var(--accent-soft);
+  text-underline-offset: 4px;
+  transition: text-decoration-color var(--dur-base) var(--ease);
+}
+
+.link:hover {
+  text-decoration-color: var(--accent);
 }
 ```
 
@@ -639,15 +776,32 @@ Uses `next/link`, not a plain `<a>`. See `docs.md`: `eslint-config-next`'s
 `next/link` consistently rather than leaning on that rule's inconsistent
 detection.
 
-## The one rule
+## The rules
 
-**Feature styles never go in `src/styles/`.** That folder is the frozen
-baseline — treat it as read-only during feature work.
+**One obvious way to express a style**, so an agent never flips a coin between
+idioms and two sessions never diverge. The layers, values flowing up from L0:
 
-- Default: use token-based Tailwind utilities in the component
-  (`className="bg-surface text-text-muted rounded-md"`).
-- If a feature genuinely needs custom CSS: co-locate it as
-  `src/features/<x>/<x>.module.css`.
+```
+ L3  scope override    .compact { --h2-size: 1.5rem }   redefine a token per subtree
+ L2  component module  .card { … }                      the workhorse
+ L1  base elements     h1,h2,p { … var(--…) }           reset + bare-tag floor
+ L0  tokens            :root { --surface --ink … }      the values, one source
+```
+
+- **`src/styles/` is the frozen baseline** — read-only during feature work. Every
+  component styles itself with a co-located `*.module.css` beside its `.tsx`.
+- **Every value is a token.** Never a raw color above L0; raw numbers only for a
+  one-off structural value with no sensible token (a `z-index`, a 20px icon box).
+- **No Tailwind, no PostCSS, no CSS-in-JS.** Adding a utility class is the
+  regression — with the `@theme` bridge gone it fails *silently*, rendering
+  unstyled rather than erroring.
+- Two idioms recur and are the house style: **base + modifier**
+  (`` className={`${styles.thumb} ${error ? styles.thumbError : ''}`} ``, the
+  modifier setting only the delta) and **active/inactive conditional class**
+  (base always on, exactly one of `.xActive` / `.xInactive` added).
+- Style children through the **direct-child** combinator (`.card > h2`), not a
+  descendant selector, which would reach into nested child components. Keep
+  descendant rules one level deep.
 
 ## What "done" looks like
 

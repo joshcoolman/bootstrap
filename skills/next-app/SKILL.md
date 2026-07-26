@@ -59,7 +59,7 @@ unrelated clutter; that's the user's call.
 ## Resources — read these in order
 
 - [Shell](resources/shell.md) — stack, all config files, entry points, exact `next.config.ts`
-- [Styles](resources/styles.md) — Paper & Ink design system, exact CSS values, @theme bridge, theme-init/theme-toggle
+- [Styles](resources/styles.md) — Paper & Ink design system, exact CSS values, the L0-L3 layers, theme-init/theme-toggle
 - [Auth](resources/auth.md) — session layer, credentials, middleware, routes, tests, the user-add script (verbatim code)
 - [Docs](resources/docs.md) — docs/ folder structure and the full `/docs` viewer implementation
 - [Knowledge](resources/knowledge.md) — feature seams and knowledge/ folder pattern
@@ -74,10 +74,12 @@ succeeds after Step 1 before writing any source files.
 
 `git init` if `.git` doesn't already exist. Write all config and entry files per
 the shell and styles resources: `package.json`, `next.config.ts`,
-`postcss.config.mjs`, `eslint.config.mjs`, `tsconfig.json`, `vitest.config.ts`,
+`eslint.config.mjs`, `tsconfig.json`, `vitest.config.ts`,
 `pnpm-workspace.yaml`, `src/test-setup.ts`, `src/test-server-only-stub.ts`,
-`.gitignore`, `src/app-meta.ts`, `src/app/layout.tsx`, `src/app/page.tsx`,
-`src/components/theme-init.tsx`, `src/components/theme-toggle.tsx`.
+`.gitignore`, `src/app-meta.ts`, `src/app/layout.tsx`, `src/app/page.tsx` (+
+`page.module.css`), `src/components/index.ts`,
+`src/components/theme-init/theme-init.tsx`, and
+`src/components/theme-toggle/theme-toggle.tsx` (+ its `.module.css`).
 
 Run `pnpm install`. Fix any install errors before continuing.
 
@@ -131,8 +133,8 @@ Do **not** write `docs/PLAN.md`. The standard is explicit: plans, tasks, and
 bugs live as GitHub issues, never as a markdown file in `docs/`. Build order and
 "what's next" belong in the README `## Status` block (Step 7) and in issues.
 
-Write `src/features/docs/build-docs.ts`, `src/app/docs/page.tsx`, and
-`src/components/docs-viewer.tsx` using the full implementation from the docs
+Write `src/lib/doc-index.ts`, `src/app/docs/page.tsx`, and
+`src/components/docs-viewer/docs-viewer.tsx` (+ its `.module.css`) using the full implementation from the docs
 resource.
 
 Add `react-markdown` and `remark-gfm`, run `pnpm install`, confirm `/docs`
@@ -225,8 +227,11 @@ your-app/
 │   │   ├── login/page.tsx            ← the only public route
 │   │   ├── dashboard/page.tsx        ← empty, gated — build here
 │   │   └── docs/page.tsx             ← Server Component, reads fs
-│   ├── components/
-│   │   ├── theme-init.tsx  theme-toggle.tsx  docs-viewer.tsx
+│   ├── components/                     ← one folder per component, ONE root barrel
+│   │   ├── index.ts                  ← the only barrel (#/components)
+│   │   ├── theme-init/theme-init.tsx
+│   │   ├── theme-toggle/             theme-toggle.tsx + .module.css
+│   │   └── docs-viewer/              docs-viewer.tsx + .module.css
 │   ├── features/
 │   │   ├── auth/
 │   │   │   ├── CLAUDE.md
@@ -238,14 +243,15 @@ your-app/
 │   │   │   ├── index.ts              ← barrel — never Edge-imported
 │   │   │   └── session.test.ts  credentials.test.ts
 │   │   ├── core/                       ← seam; no CLAUDE.md until it owns something
-│   │   ├── docs/build-docs.ts
 │   │   └── knowledge/
 │   │       ├── CLAUDE.md
 │   │       └── index.ts              ← server-only
-│   └── styles/
+│   ├── lib/                            ← mechanisms; no place in the nav
+│   │   └── doc-index.ts              ← one route uses it, so not a feature
+│   └── styles/                         ← frozen baseline; no framework import
 │       ├── index.css  tokens.css  base.css  typography.css
 ├── .github/workflows/ci.yml
-├── package.json  next.config.ts  postcss.config.mjs
+├── package.json  next.config.ts
 ├── eslint.config.mjs  tsconfig.json  vitest.config.ts
 ├── pnpm-workspace.yaml               ← allowBuilds; required, not optional
 └── .gitignore

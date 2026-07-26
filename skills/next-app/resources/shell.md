@@ -10,8 +10,8 @@ correct configuration.
 - **Runtime:** Node.js / pnpm (not npm)
 - **Framework:** Next.js 16, App Router
 - **Language:** TypeScript (strict)
-- **Styles:** Tailwind CSS v4 (via `@tailwindcss/postcss` — runs through
-  PostCSS)
+- **Styles:** CSS only — token layers + co-located CSS Modules. No Tailwind, no
+  PostCSS, no CSS-in-JS.
 - **Testing:** Vitest + React Testing Library
 - **Linting:** ESLint (flat config, `eslint-config-next`)
 - **Formatting:** Prettier
@@ -75,7 +75,7 @@ resolve everything together:
 
 ```
 pnpm add next react react-dom lucide-react server-only
-pnpm add -D typescript@^5 @types/node @types/react @types/react-dom tailwindcss @tailwindcss/postcss eslint@^9 eslint-config-next eslint-config-prettier prettier vitest @testing-library/react @testing-library/jest-dom jsdom
+pnpm add -D typescript@^5 @types/node @types/react @types/react-dom eslint@^9 eslint-config-next eslint-config-prettier prettier vitest @testing-library/react @testing-library/jest-dom jsdom
 ```
 
 `lucide-react` and `server-only` are **production** dependencies, not dev
@@ -124,19 +124,11 @@ const nextConfig: NextConfig = {}
 export default nextConfig
 ```
 
-### `postcss.config.mjs`
+### No `postcss.config.mjs`
 
-Tailwind v4 runs through PostCSS here:
-
-```js
-const config = {
-  plugins: {
-    '@tailwindcss/postcss': {},
-  },
-}
-
-export default config
-```
+Next compiles CSS Modules and plain CSS natively. Nothing in this stack needs a
+PostCSS pass, so the file is deliberately absent — adding one back means a build
+step nobody asked for.
 
 ### `eslint.config.mjs`
 
