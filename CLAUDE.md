@@ -11,11 +11,20 @@ that.
 
 ## The admission bar
 
-**No skill lands without having been run for real.** Skills are developed by
-building the actual feature in a live "mule" repo first, logging every
-friction point as it happens, validating end-to-end (including the
-interactive human steps — that's where the live-fire bugs are), and only then
-codifying. A skill written from imagination is a prompt, not a skill.
+**A new skill is written from a live run, not from imagination** — build the
+feature for real in a mule repo, log every friction point as it happens,
+validate end-to-end including the interactive human steps (that's where the
+live-fire bugs are), then codify. A skill written from imagination is a prompt,
+not a skill.
+
+This is about **where the content comes from**, not a permission gate. An edit
+to an existing skill — a fix, a conflict resolved, a convention brought in line
+— can land on reasoning alone, with the consumer-run tracked as follow-up in
+`## Status`. What that follow-up owes is a specific failure mode to look for,
+because the expensive bugs here are the silent ones: a scaffold that renders
+plausibly while a reset is missing, or a surviving utility class that produces
+unstyled output rather than an error. Say what would go wrong and how you'd
+see it. "Unvalidated" on its own is not a reason to hold an edit.
 
 ## The development loop for a new skill
 
