@@ -114,9 +114,9 @@ seeds the README `## Status` block; and the per-feature `CLAUDE.md` rule relaxed
 to the standard's boundary test (write one only where a folder is a boundary you
 could violate without reading it). Separately, every dead `vite-app` comparison
 was stripped from the `next-app` resources (issue #12) — the reasoning kept, the
-contrast to a deleted shell dropped. One open decision deferred: the standard's
-Base UI + `*.module.css` styling vs. the validated Tailwind/Paper & Ink system —
-`CODE-STANDARDS.md` states the real stack (Tailwind tokens) for now.
+contrast to a deleted shell dropped. The styling question is now **decided**:
+`next-app` scaffolds CSS-only (token layers + co-located CSS Modules), matching
+the standard. Tailwind and PostCSS are gone from the scaffold.
 
 **Earlier:** a hard narrowing, and a fresh start. bootstrap went from five
 skills to two.
@@ -163,8 +163,10 @@ error, never as the thing that is actually wrong.
 - **Consumer-run the aligned `next-app`** — v2.1.0's changes haven't been
   driven end-to-end yet. First scaffold from it confirms `CODE-STANDARDS.md`
   and the seeded `## Status` land right and nothing references `PLAN.md`.
-- **Decide the styling question** — adopt the standard's Base UI + `*.module.css`
-  in `next-app`, or amend the standard to bless Tailwind/Paper & Ink. Open.
+- **Consumer-run the CSS-only conversion** — `next-app` was converted off
+  Tailwind on paper, not yet driven end-to-end. The gate: a scaffolded app
+  renders correctly with no framework reset (L1 now owns it) and no surviving
+  utility class, which fails *silently* rather than erroring.
 - **File the Vercel/Railway doc fix** — `shell.md` names Vercel as the deploy
   target while the plugin ships `deploy-next-railway`. Pre-existing; wants an issue.
 - The storage part and the setup wizard still have not executed (`prompt-smith`

@@ -68,8 +68,7 @@ This repo follows the project standard. The load-bearing rules:
 Order of search when a view needs a component:
 
 1. Shop the shelf — build from `src/components/` if you can.
-2. A gap the shelf can't fill — build the primitive and promote it once a
-   second route needs it.
+2. A gap the shelf can't fill — build the primitive properly shareable.
 3. Hand-build only for a true outlier.
 
 Where a component lives — litmus: does it import `#/features`?
@@ -78,16 +77,25 @@ Where a component lives — litmus: does it import `#/features`?
 - **App-shared** → `app/_components/` (imports `#/features`, used by 2+ routes).
 - **Route-local** → that route's `_components/`.
 
-Build on need — no speculative primitives; the bar to promote is a real second
-use, not "might be shared."
+Build on need — no speculative primitives. **The bar to promote is "properly
+shareable," not "used twice"**: a generic, type-safe contract with no coupling to
+a feature, route, or the DB. Usage count doesn't decide it; genericness does.
 
 ## Styling
 
-This app styles with Tailwind + the Paper & Ink design system (`docs/STYLE.md`,
-`src/styles/`). The rule that carries over from the standard: **values reference
-tokens, never a raw color or number** — domain UI uses the semantic token
-classes (`bg-surface`, `text-text-muted`), and dark mode comes free from the
-token remap. Keep one visual language.
+CSS only — the Paper & Ink token layers plus co-located CSS Modules
+(`docs/STYLE.md`, `src/styles/`). No Tailwind, no PostCSS, no CSS-in-JS.
+
+- `src/styles/` is the frozen baseline; a component styles itself with a
+  `name.module.css` beside its `name.tsx`.
+- **Values reference tokens, never a raw color or number.** Dark mode is a token
+  remap under `:root[data-theme='dark']`, so `var(--…)` follows automatically; a
+  structural dark-mode difference uses `:global([data-theme='dark']) .x { }`.
+- Base + modifier is the house idiom — the modifier sets only the delta.
+- Style children with the direct-child combinator (`.card > h2`), one level deep.
+
+A utility class here fails **silently** (unstyled, no error), so it is the
+regression to watch for.
 
 ## docs & issues
 
@@ -96,11 +104,32 @@ token remap. Keep one visual language.
   issues**, never files in `docs/`.
 - Orientation = the README `## Status` block + open issues. No plan files.
 
+## Writing the docs
+
+Primary reader is a model booting a session. Brief, bulleted, no prose.
+
+- **The code is the documentation.** A doc restating the file tree goes stale.
+- **State a rule once, where it binds.** The same rule in two files drifts into
+  two different rules and the reader has to pick a winner.
+- **Prose earns its place only where the code cannot show it** — a past failure,
+  a consequence, a reason. Stop cutting when removing one more sentence would
+  change a decision.
+- Reasoning and taste go in `docs/reference/`, not in a file re-read on every edit.
+
+## The README `## Status` block
+
+A snapshot, not a log — read at every session boot.
+
+- **Last shipped — 6 bullets max, one line each, most-recent first.**
+- **Up next — a short pointer to the ordered issues.**
+- Narrative lives in `git log` and PR descriptions. Overwrite freely.
+
 ## CLAUDE.md
 
 Write a subfolder `CLAUDE.md` only where the folder is a boundary you could
 violate without reading it (an invariant, an ownership rule, a dependency
 direction). A missing one is correct when there's nothing non-obvious to say.
+Not a file inventory, not a restatement of global rules.
 ```
 
 ### `docs/STYLE.md`
@@ -131,7 +160,7 @@ App Router already has:
   Node's `fs` — this only runs on the server (build time for a static route
   like this one, since nothing here depends on the request), never ships to
   the browser.
-- A **Client Component** (`src/components/docs-viewer.tsx`) receives the
+- A **Client Component** (`src/components/docs-viewer/docs-viewer.tsx`) receives the
   already-read docs as a plain serializable prop (an array of
   `{ id, title, section, order, content }` — all strings and numbers, safe to
   cross the Server→Client boundary) and owns the interactive part: sidebar
@@ -141,7 +170,12 @@ The classification logic (turning a file path into a title/section/order) is
 pulled out into its own pure, framework-agnostic function so it doesn't care
 whether the raw content came from a build-time glob or a Node `fs` read.
 
-### `src/features/docs/build-docs.ts`
+### `src/lib/doc-index.ts`
+
+`src/features/` means shared by more than one route, and `/docs` is one route —
+so this is a **mechanism**, not a feature. It lives in `src/lib/`, named for the
+index it builds rather than for the `docs/` folder it reads about.
+
 
 ```ts
 export type Doc = { id: string; title: string; section: string; order: number; content: string }
@@ -209,8 +243,8 @@ needs Node 18.17+ — already required by Next 16, so no new constraint:
 ```tsx
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { buildDocs } from '#/features/docs/build-docs'
-import { DocsViewer } from '#/components/docs-viewer'
+import { buildDocs } from '#/lib/doc-index'
+import { DocsViewer } from '#/components'
 import 'server-only'
 
 function readIfExists(path: string): string | null {
@@ -249,7 +283,7 @@ exactly what lets it call `node:fs` directly. Nothing here is
 request-dependent, so Next renders it once at build time like any other
 static route — the docs shown are whatever was in the repo at build time.
 
-### `src/components/docs-viewer.tsx`
+### `src/components/docs-viewer/docs-viewer.tsx`
 
 Owns all interactivity, fed `docs` as a prop instead of computing them from a
 glob:
@@ -263,7 +297,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Menu, X } from 'lucide-react'
 import { appMeta } from '#/app-meta'
-import { groupBySection, type Doc } from '#/features/docs/build-docs'
+import { groupBySection, type Doc } from '#/lib/doc-index'
 
 // The URL hash is the single source of truth for which doc is open, which means
 // reading it has to survive server rendering: the server has no window, so
@@ -303,30 +337,20 @@ export function DocsViewer({ docs }: { docs: Doc[] }) {
 
   const active = docs.find((d) => d.id === activeId) ?? docs[0]
   if (!active) {
-    return (
-      <main className="bg-bg text-text-muted flex min-h-screen items-center justify-center">
-        No documents found.
-      </main>
-    )
+    return <main className={styles.empty}>No documents found.</main>
   }
 
   const nav = (
-    <nav className="flex flex-col gap-7">
+    <nav className={styles.nav}>
       {sections.map(({ section, docs: items }) => (
-        <div key={section} className="flex flex-col gap-0.5">
-          <p className="text-text-faint mb-2 px-3 font-mono text-[11px] font-semibold tracking-[0.12em] uppercase">
-            {section}
-          </p>
+        <div key={section} className={styles.navSection}>
+          <p className={styles.navHeading}>{section}</p>
           {items.map((d) => (
             <button
               key={d.id}
               type="button"
               onClick={() => select(d.id)}
-              className={`block w-full rounded-md px-3 py-1.5 text-left text-[13px] transition ${
-                d.id === active.id
-                  ? 'bg-surface-raised text-text font-medium'
-                  : 'text-text-muted hover:text-text hover:bg-surface-sunken'
-              }`}
+              className={`${styles.navItem} ${d.id === active.id ? styles.navItemActive : ''}`}
             >
               {d.title}
             </button>
@@ -337,25 +361,25 @@ export function DocsViewer({ docs }: { docs: Doc[] }) {
   )
 
   return (
-    <main className="bg-bg text-text flex min-h-screen">
-      <aside className="border-border bg-surface sticky top-0 hidden h-screen w-[272px] shrink-0 overflow-y-auto border-r px-5 pt-9 pb-12 sm:block">
-        <Link href="/" className="text-text-muted hover:text-accent mb-9 block px-3 font-mono text-xs tracking-tight transition-colors">
+    <main className={styles.shell}>
+      <aside className={styles.sidebar}>
+        <Link href="/" className={styles.brand}>
           {appMeta.name}
         </Link>
         {nav}
       </aside>
-      <div className="min-w-0 flex-1">
-        <article className="mx-auto max-w-[760px] px-6 pt-12 pb-28 sm:px-10 sm:pt-20">
-          <div className="mb-10 flex items-center gap-3 sm:hidden">
+      <div className={styles.body}>
+        <article className={styles.article}>
+          <div className={styles.mobileBar}>
             <button
               type="button"
               aria-label="Open docs menu"
               onClick={() => setNavOpen(true)}
-              className="border-border text-text-body rounded-md border p-2"
+              className={styles.iconButton}
             >
               <Menu size={16} />
             </button>
-            <span className="text-text text-sm font-medium">{active.title}</span>
+            <span className={styles.mobileTitle}>{active.title}</span>
           </div>
           <div className="prose compact">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{active.content}</ReactMarkdown>
@@ -363,18 +387,15 @@ export function DocsViewer({ docs }: { docs: Doc[] }) {
         </article>
       </div>
       {navOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 sm:hidden" onClick={() => setNavOpen(false)}>
-          <div
-            className="border-border bg-surface h-full w-72 max-w-[80%] overflow-y-auto border-r p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-5 flex items-center justify-between">
-              <span className="text-text text-sm font-semibold">Docs</span>
+        <div className={styles.scrim} onClick={() => setNavOpen(false)}>
+          <div className={styles.drawer} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.drawerHeader}>
+              <span className={styles.drawerTitle}>Docs</span>
               <button
                 type="button"
                 aria-label="Close docs menu"
                 onClick={() => setNavOpen(false)}
-                className="border-border text-text-body rounded-md border p-2"
+                className={styles.iconButton}
               >
                 <X size={16} />
               </button>
@@ -387,6 +408,191 @@ export function DocsViewer({ docs }: { docs: Doc[] }) {
   )
 }
 ```
+
+`prose compact` stays a bare global pair — those are L1 typography roles from
+`typography.css` styling markdown output the component never authors, which is
+exactly what a role class is for.
+
+### `src/components/docs-viewer/docs-viewer.module.css`
+
+The sidebar is the one genuinely layout-shaped component in the scaffold, so it
+carries a flat set of named element classes — one per semantic region. That is
+correct for layout/overlay components, not a smell.
+
+```css
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.empty {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--text-muted);
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  display: none;
+  height: 100vh;
+  width: 272px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  padding: var(--space-7) var(--space-5) var(--space-7);
+}
+
+.brand {
+  display: block;
+  margin-bottom: var(--space-6);
+  padding-inline: var(--space-3);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: -0.01em;
+  transition: color var(--dur-base) var(--ease);
+}
+
+.brand:hover {
+  color: var(--accent);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.navSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.navHeading {
+  margin-bottom: var(--space-2);
+  padding-inline: var(--space-3);
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.navItem {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius-md);
+  padding: 0.375rem var(--space-3);
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: all var(--dur-base) var(--ease);
+}
+
+.navItem:hover {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+/* Modifier sets only the delta from .navItem. */
+.navItemActive {
+  background: var(--surface-raised);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.body {
+  min-width: 0;
+  flex: 1;
+}
+
+.article {
+  margin-inline: auto;
+  max-width: 760px;
+  padding: var(--space-7) var(--space-5) 7rem;
+}
+
+.mobileBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.mobileTitle {
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.iconButton {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  color: var(--text-body);
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--scrim);
+}
+
+.drawer {
+  height: 100%;
+  width: 18rem;
+  max-width: 80%;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  padding: var(--space-5);
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.drawerTitle {
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* The sidebar/drawer swap. Mobile-first: drawer below, sidebar above. */
+@media (min-width: 640px) {
+  .sidebar {
+    display: block;
+  }
+
+  .mobileBar,
+  .scrim {
+    display: none;
+  }
+
+  .article {
+    padding: var(--space-9) var(--space-7) 7rem;
+  }
+}
+```
+
+**The one thing to check after scaffolding:** `tokens.css` must define
+`--scrim` and `--radius-md`. Tailwind supplied `bg-black/60` and `rounded-md`
+implicitly; with the framework gone they have to exist as real tokens, which is
+the migration trap `project-standard` names — *tokens the framework gave
+implicitly surface as gaps to add explicitly*.
 
 **Uses `next/link` for internal navigation** — confirmed live:
 `eslint-config-next`'s `@next/next/no-html-link-for-pages` rule flags a plain
