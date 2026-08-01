@@ -32,8 +32,15 @@ what's now proven in that migration.
 
 ### `package.json`
 
-Dev port is app-specific — pick one that doesn't conflict with sibling repos
-(`<dev-port>` below). Use pnpm.
+Dev port is app-specific (`<dev-port>` below). Use pnpm.
+
+**Pick a distinctive four-digit port, and never 3000.** "Something that doesn't
+conflict" is not a rule anyone can follow — 3000 is the default every other
+Next app on the machine also took, so a sibling repo left running means this
+one dies at startup with `EADDRINUSE: address already in use`, before any of
+the app's own output appears. Confirmed live on a first scaffold. Choose
+something memorable and unlikely (`bootsy` uses 3417); the point is only that
+two apps never collide.
 
 Declare `packageManager` with the pnpm version actually installed (check with
 `pnpm -v`), alongside `engines`:
@@ -57,12 +64,18 @@ the action error out. The two settings must move together.
 "scripts": {
   "dev": "next dev -p <dev-port>",
   "build": "next build",
-  "start": "next start",
+  "start": "next start -p <dev-port>",
   "test": "vitest run",
   "lint": "eslint src",
-  "format": "prettier --write ."
+  "format": "prettier --write .",
+  "local:up": "node scripts/local-up.mjs"
 }
 ```
+
+`start` carries `-p <dev-port>` too — without it a production run silently
+lands on 3000 while every doc and the `local:up` Ready block name the real
+port. `local:up` is the one-command path from a clone to a login; see
+`local-up.md`.
 
 **`build` does NOT need a `tsc --noEmit &&` prefix** — `next build`
 type-checks the whole project natively as part of the build, so there's no

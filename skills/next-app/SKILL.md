@@ -17,6 +17,7 @@ top of it yet:
 - `/dashboard` — empty, guarded, ready to build in
 - Deny-by-default middleware: everything except `/login` requires a session
 - `/docs` viewer reading the repo's own markdown
+- `pnpm local:up` — one command from a clone to a working login
 - Feature seams, CI, and a `pnpm auth:add-user` script
 
 The intended use is one exploration per app: scaffold, build the single idea,
@@ -60,7 +61,8 @@ unrelated clutter; that's the user's call.
 
 - [Shell](resources/shell.md) — stack, all config files, entry points, exact `next.config.ts`
 - [Styles](resources/styles.md) — Paper & Ink design system, exact CSS values, the L0-L3 layers, theme-init/theme-toggle
-- [Auth](resources/auth.md) — session layer, credentials, middleware, routes, tests, the user-add script (verbatim code)
+- [Auth](resources/auth.md) — session layer, credentials, middleware, routes, tests, the user-add script, the two env files (verbatim code)
+- [local:up](resources/local-up.md) — the one-command path from a clone to a working login (verbatim code)
 - [Docs](resources/docs.md) — docs/ folder structure and the full `/docs` viewer implementation
 - [Knowledge](resources/knowledge.md) — feature seams and knowledge/ folder pattern
 - [CI/CD](resources/cicd.md) — GitHub Actions workflow
@@ -108,7 +110,8 @@ Per the auth resource, write:
 - `src/proxy.ts` — deny-by-default middleware
 - `src/app/login/page.tsx` and `src/app/dashboard/page.tsx`
 - `scripts/add-user.mjs`, plus the `auth:add-user` entry in `package.json`
-- `AUTH_SESSION_SECRET` and `AUTH_USERS` in `.env.example`
+- `scripts/local-up.mjs` per the local:up resource, plus the `local:up` entry
+- `.env.example` and `.env.local.example` — both listing every variable
 
 Login and dashboard markup follows the Paper & Ink idiom established in Step 2 —
 the auth resource specifies behaviour and state, not styling. The dashboard is
@@ -168,9 +171,13 @@ Run `pnpm build`, `pnpm test`, `pnpm lint` — all must pass with zero env vars.
 Then verify auth for real, in a browser. This is the step that catches what
 tests can't:
 
-1. Generate a credential: `pnpm auth:add-user 'you@example.com' '<password>'`
-2. Write `AUTH_SESSION_SECRET` (`openssl rand -hex 32`) and the printed
-   `AUTH_USERS` entry into `.env.local`
+1. `pnpm local:up` — creates `.env.local`, generates `AUTH_SESSION_SECRET`, and
+   seeds the dev login. It prints the credentials to sign in with. Do **not**
+   hand-assemble `.env.local` or paste an `auth:add-user` line; if that is
+   necessary here, `local:up` is broken and that is the finding.
+2. `pnpm local:up` again — it must report `.env.local already current` and
+   write nothing. A second run that rewrites the file or rotates the secret is
+   a defect, and it is invisible on the first run.
 3. Start `pnpm dev` as a tracked background process (not shell `&`) so it's
    stoppable rather than orphaned, and poll until it responds
 4. Drive the flow: `/dashboard` redirects to `/login` → wrong password shows an
@@ -198,6 +205,8 @@ empty dashboard, `/docs` viewer, CI green with zero env vars.
 
 **Up next:** build the one idea in `/dashboard`. Plans and tasks live as GitHub
 issues, not here.
+
+Fresh clone: `pnpm install && pnpm local:up && pnpm dev`.
 ```
 
 Finish at the handoff moment, not a pass/fail report: leave the dev server
@@ -210,13 +219,15 @@ and where `/docs` lives. The point is that they pick up from a live app.
 your-app/
 ├── CLAUDE.md
 ├── README.md
-├── .env.example                      ← AUTH_SESSION_SECRET, AUTH_USERS
+├── .env.example                      ← which vars exist; values blank
+├── .env.local.example                ← runnable local template; local:up copies it
 ├── docs/
 │   ├── OVERVIEW.md  SPEC.md  CODE-STANDARDS.md  STYLE.md
 ├── knowledge/
 │   ├── guidance.md  rubric.md
 ├── scripts/
-│   └── add-user.mjs                  ← prints a credential to paste
+│   ├── add-user.mjs                  ← prints a credential to paste
+│   └── local-up.mjs                  ← clone → login, in one command
 ├── src/
 │   ├── app-meta.ts
 │   ├── test-setup.ts  test-server-only-stub.ts

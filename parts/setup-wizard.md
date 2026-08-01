@@ -1,6 +1,6 @@
 # Setup wizard
 
-`pnpm setup` — one command from a fresh clone to a live, protected URL.
+`pnpm setup` — one command from a configured local app to a live, protected URL.
 
 Point an agent at this file: *"read `parts/setup-wizard.md` and add the setup
 wizard."* It ships `scripts/setup.mjs` into the app.
@@ -10,15 +10,28 @@ wizard."* It ships `scripts/setup.mjs` into the app.
 An app you can't stand up in five minutes is an app you won't stand up. The
 whole point of these templates is that an exploration starts in minutes and
 gets torn down without regret — and the thing that actually delivers that is
-one command that handles login, provisioning, env vars, and deploy.
+one command that handles provisioning, env vars, and deploy.
 
 This is the piece worth keeping from a retired repo: not the app, the pipeline.
 
-**Relationship to `deploy-next-railway`:** that skill is agent-driven — you ask
-Claude and it provisions. This is a script *in the app* that you run yourself.
-They overlap deliberately. Use the skill when an agent is already in the loop;
-use the wizard when you've cloned a repo on a new machine, or want the thing
-live without opening Claude at all.
+## Three ways to stand an app up — one job each
+
+This wizard used to own local configuration too, via a `--local-only` flag.
+**It no longer does, and must not grow it back.** `next-app` scaffolds
+`pnpm local:up`, which does that job non-interactively and idempotently. Two
+commands writing `.env.local` is exactly the conflicting signal `CLAUDE.md`
+names as the failure to hunt for — an agent picking between them flips a coin,
+and different sessions flip it differently.
+
+| Command | Where it lives | Job |
+| --- | --- | --- |
+| `pnpm local:up` | in the app (`next-app` ships it) | local `.env.local`, session secret, dev login. No prompts, safe to re-run. |
+| `pnpm setup` | in the app (this part) | Railway: link, provision, push vars, deploy. Interactive — it asks for API keys. |
+| `deploy-next-railway` | the skill | the same deploy, agent-driven, when Claude is already in the loop |
+
+So: `pnpm local:up` to work on it, `pnpm setup` to put it on the internet
+yourself, the skill to have an agent do the latter. The wizard assumes
+`local:up` has already run and reads the `.env.local` it produced.
 
 ## The design that makes it reusable
 
@@ -55,27 +68,38 @@ feedback and none of the exposure; a fix that's annoying to use gets reverted.
 with no merge and no backup — destroying working credentials on a re-run. Read
 the existing file, merge, and only overwrite keys the user confirms.
 
-**3. Deploy is optional.** The original hard-exited when the host CLI was
-missing, with no way past it. `--local-only` should get you a configured local
-app with no account, no deploy, and no network calls beyond what you ask for.
+**3. A missing host CLI must not be a dead end.** The original hard-exited when
+the Railway CLI was absent, with no way past it. It no longer needs a
+`--local-only` escape hatch — `pnpm local:up` already gets you a working local
+app with no account and no network calls — but it must still say plainly what
+to install and that local development is unaffected, rather than exiting on an
+error that reads like the app is broken.
+
+**A fourth rule, from narrowing this to deploy only: never push the local
+session secret.** The deployed app gets its own, generated here. The secret is
+the only thing binding a session cookie to an environment, so a shared value
+means a production cookie validates against localhost and signs you in as a
+user the local allowlist has no entry for — every scoped query returns empty,
+which is indistinguishable from a fresh install.
 
 ## `scripts/setup.mjs`
 
 ```js
 #!/usr/bin/env node
-// One command from a fresh clone to a live, protected URL.
+// From a configured local app to a live, protected URL.
 // Reads .env.example and fills each variable by class, so adding a new key to
 // .env.example is all it takes for this wizard to start asking for it.
 //
-// Usage: pnpm setup            full run, provisions and deploys
-//        pnpm setup --local-only    configure .env.local only, no account needed
+// Local configuration is NOT this script's job — `pnpm local:up` owns that,
+// and this reads the .env.local it produced. The one value deliberately not
+// carried over is AUTH_SESSION_SECRET: the deployed app gets its own.
+//
+// Usage: pnpm setup
 import { execSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
 import { confirm, input, password, select } from '@inquirer/prompts'
 import { hashPassword, normalizeEmail } from '../src/features/auth/hash.mjs'
-
-const LOCAL_ONLY = process.argv.includes('--local-only')
 
 const run = (cmd) => execSync(cmd, { stdio: 'inherit' })
 const capture = (cmd) => execSync(cmd, { stdio: ['pipe', 'pipe', 'pipe'] }).toString().trim()
@@ -124,16 +148,19 @@ if (Object.keys(existing).length) {
   console.log('  Existing values are kept unless you choose to replace them.\n')
 }
 
-// ── Auth: session secret + first user ───────────────────────
+// ── Auth ────────────────────────────────────────────────────
 console.log('── Auth ─────────────────────────────\n')
+
+// Values that go to the host but NOT into .env.local. The session secret lives
+// here and nowhere else: sharing it with local means a production cookie
+// validates against localhost, signing you in as a user the local allowlist
+// has no entry for — an empty app that reads as a fresh install.
+const deployOnly = {}
 
 for (const [name, generate] of Object.entries(GENERATED)) {
   if (!names.includes(name)) continue
-  if (values[name] && !(await confirm({
-    message: `${name} already set — regenerate? (invalidates all sessions)`, default: false,
-  }))) continue
-  values[name] = generate()
-  console.log(`  ✓ ${name} generated`)
+  deployOnly[name] = generate()
+  console.log(`  ✓ ${name} generated for the deployed app (local keeps its own)`)
 }
 
 if (names.includes('AUTH_USERS')) {
@@ -184,17 +211,15 @@ if (remaining.length) {
   }
 }
 
-// ── Write .env.local (merge, with a backup) ─────────────────
-if (existsSync('.env.local')) copyFileSync('.env.local', '.env.local.bak')
+// ── Write .env.local back (merge, with a backup) ────────────
+// Only the keys you were just prompted for — an API key you typed is worth
+// keeping locally too. `deployOnly` values never land here.
+// Backup name matches the `*.local` gitignore rule; `.env.local.bak` would not.
+if (existsSync('.env.local')) copyFileSync('.env.local', '.env.previous.local')
 
 const body = names.filter((n) => values[n]).map((n) => `${n}=${values[n]}`).join('\n')
 writeFileSync('.env.local', body + '\n')
-console.log('\n  ✓ .env.local written' + (existsSync('.env.local.bak') ? ' (previous saved as .env.local.bak)' : ''))
-
-if (LOCAL_ONLY) {
-  console.log('\n  Local setup complete. Run `pnpm dev`.\n')
-  process.exit(0)
-}
+console.log('\n  ✓ .env.local updated (previous saved as .env.previous.local)')
 
 // ── Railway ─────────────────────────────────────────────────
 console.log('\n── Railway ──────────────────────────\n')
@@ -202,7 +227,8 @@ console.log('\n── Railway ────────────────�
 if (!canRun('railway --version')) {
   console.log('  Railway CLI not found. Install it:\n')
   console.log('    brew install railway\n')
-  console.log('  Then re-run `pnpm setup`, or use `pnpm setup --local-only`.\n')
+  console.log('  Then re-run `pnpm setup`.')
+  console.log('  Local development is unaffected — `pnpm local:up && pnpm dev` still works.\n')
   process.exit(1)
 }
 if (!canRun('railway whoami')) {
@@ -228,10 +254,13 @@ if (names.includes('DATABASE_URL') && !values.DATABASE_URL) {
 }
 
 // Push everything except provisioned vars, which Railway wires itself.
+// deployOnly wins over values — that is how the deployed app gets a session
+// secret distinct from the local one.
 console.log('\n  Pushing environment variables...')
-for (const name of names.filter((n) => values[n] && !PROVISIONED.includes(n))) {
+const pushed = { ...values, ...deployOnly }
+for (const name of names.filter((n) => pushed[n] && !PROVISIONED.includes(n))) {
   try {
-    execSync(`railway variables --set ${JSON.stringify(`${name}=${values[name]}`)}`,
+    execSync(`railway variables --set ${JSON.stringify(`${name}=${pushed[name]}`)}`,
       { stdio: ['pipe', 'ignore', 'pipe'] })
     console.log(`  ✓ ${name}`)
   } catch (err) {
@@ -254,8 +283,11 @@ console.log('\n  Setup complete. Sign in with the account you created above.\n')
 "setup": "node scripts/setup.mjs"
 ```
 
-Add `@inquirer/prompts` to `devDependencies`, and `.env.local.bak` to
-`.gitignore`.
+Add `@inquirer/prompts` to `devDependencies`. No `.gitignore` change is needed:
+the backup is `.env.previous.local`, which the existing `*.local` rule already
+covers. `.env.local.bak` — the obvious name, and the one an earlier draft of
+this used — is **not** covered by that glob, and would leave a file of
+credentials sitting committable.
 
 **Note on the script name:** `setup` is safe in `package.json`, but `pnpm setup`
 is also a pnpm built-in (it configures the pnpm home directory). `pnpm run
@@ -265,13 +297,14 @@ calling the script `setup` at all.
 
 ## Verification
 
-Run it three times. Each pass proves a different thing:
+Starts from an app already configured by `pnpm local:up`. Three passes, each
+proving a different thing:
 
-1. **Fresh clone, `--local-only`** — no Railway account touched. `.env.local`
-   gets a generated secret and one user; `pnpm dev` starts; you can sign in.
+1. **No Railway CLI installed** — prints the install line, says local dev is
+   unaffected, exits. It must not read as the app being broken.
 2. **Re-run over the existing `.env.local`** — nothing is destroyed. Existing
    values are offered, not clobbered. Choose "add another person" and confirm
-   both accounts can sign in. Confirm `.env.local.bak` exists.
+   both accounts can sign in locally. Confirm `.env.previous.local` exists.
 3. **Full run** — links a project, pushes variables, deploys, prints a URL.
    Open it, sign in, confirm you land on the dashboard and that a signed-out
    browser is redirected to `/login`.
@@ -279,3 +312,9 @@ Run it three times. Each pass proves a different thing:
 Test 2 is the one that matters most. Clobbering a working `.env.local` is the
 defect this port exists to fix, and it only shows up on a second run — which is
 exactly the run nobody tests.
+
+After test 3, check the one thing narrowing this introduced: `railway variables`
+must show an `AUTH_SESSION_SECRET` **different** from the one in `.env.local`.
+Equal values mean the deploy-only path leaked, and the symptom — a production
+cookie signing you in locally as a user with no allowlist entry — looks like an
+empty app, not like a secret problem.
