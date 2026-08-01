@@ -106,7 +106,23 @@ want, fork it and fix it.
 
 ## Status
 
-**Last shipped (v2.1.0):** `next-app` aligned to
+**Last shipped (v2.2.0):** `next-app` ships `pnpm local:up` — one command from a
+clone to a working login. It creates `.env.local` from a new
+`.env.local.example`, generates `AUTH_SESSION_SECRET` once, and syncs a dev
+entry into `AUTH_USERS` from `LOCAL_DEV_PASSWORD` on every run, so editing that
+value and re-running *is* the password reset. The gap it closes came out of a
+consumer run: `auth:add-user` printed a credential line and nothing said it
+belonged in `.env.local`, or that a second variable had to exist beside it —
+and the app fails at the first *request*, not at startup, so unconfigured looks
+identical to broken. Ported from `bootsy`'s provisioner minus its Docker,
+Postgres, and MinIO phases; this scaffold's whole state is a cookie and an
+allowlist. `parts/setup-wizard.md` narrowed to deploy in the same pass — its
+`--local-only` flag is gone, because two commands writing `.env.local` is the
+conflicting signal `CLAUDE.md` names as the failure to hunt for. Also from that
+run: `dev` and `start` now pin a distinctive port, never 3000 (a sibling repo
+on 3000 killed the first `pnpm dev` with `EADDRINUSE` before any app output).
+
+**Earlier (v2.1.0):** `next-app` aligned to
 [`project-standard`](https://github.com/joshcoolman/project-standard). The
 scaffold now writes `docs/CODE-STANDARDS.md` (the repo's own copy of the
 standard) instead of `docs/PLAN.md` — plans are GitHub issues, never a doc; it
@@ -160,6 +176,13 @@ error, never as the thing that is actually wrong.
 
 **Up next:**
 
+- **Consumer-run `local:up`** — shipped on reasoning, not yet driven. Two
+  failure modes to look for, both **silent**, and both only visible on a
+  *second* run: a re-run that drops a person added by `auth:add-user` in
+  between (the `upsertUser` filter is what prevents it), and a re-run that
+  rewrites `AUTH_SESSION_SECRET`, which signs every session out and reads as a
+  session bug rather than as the command's doing. The gate is running it three
+  times — fresh, unchanged, and after a hand-edit — not reading it once.
 - **Consumer-run the aligned `next-app`** — v2.1.0's changes haven't been
   driven end-to-end yet. First scaffold from it confirms `CODE-STANDARDS.md`
   and the seeded `## Status` land right and nothing references `PLAN.md`.

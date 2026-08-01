@@ -1,5 +1,14 @@
 # Plan — self-host the commodity layers, drop Supabase
 
+> **Superseded — read as history, not as current shape.** The core bet here
+> landed: Supabase is out, auth is self-hosted code the app owns. Three details
+> have since moved and are wrong below: the stack is **CSS-only**, not Tailwind
+> (v2.1.0); local setup is **`pnpm local:up`**, not `pnpm setup --local-only`,
+> which no longer exists (v2.2.0); and `pnpm setup` is now deploy-only. The
+> skills and `parts/setup-wizard.md` are the current source of truth. This file
+> also predates the rule that plans are GitHub issues rather than markdown —
+> it stays only as the record of why the design is shaped this way.
+
 ## Why
 
 Across five platforms and four image apps, the same thing kept happening: each
